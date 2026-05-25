@@ -150,12 +150,14 @@ class MoveView(discord.ui.View):
         if self.sprint_used:
             await interaction.response.send_message("🔴 奔跑冷卻中（15秒）。", ephemeral=True)
             return
+
+        await interaction.response.defer(ephemeral=True)
         pool = await get_pool()
         async with pool.acquire() as db:
             cooldown = await db.fetchval("SELECT sprint_cooldown FROM users WHERE discord_id=$1", str(self.user_id))
             now = datetime.now(TZ)
             if cooldown and cooldown > now:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     f"🔴 奔跑冷卻中，{(cooldown - now).seconds} 秒後可用。", ephemeral=True
                 )
                 return
@@ -167,7 +169,7 @@ class MoveView(discord.ui.View):
         self.sprint_used = True
         button.disabled = True
         button.label = "🏃 奔跑中！(+50%)"
-        await interaction.response.edit_message(view=self)
+        await interaction.message.edit(view=self)
         await interaction.followup.send("⚡ 奔跑加速！移動速度 +50%，持續 5 秒。", ephemeral=True)
 
 
