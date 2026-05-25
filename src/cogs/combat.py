@@ -61,6 +61,19 @@ async def _get_active_pet_bonus(db, user_id):
             "hp": pet["hp_bonus"] if pet else 0}
 
 
+async def _get_node_debuff(db, user_id, stat="def"):
+    user = await db.fetchrow("SELECT current_node FROM users WHERE discord_id=$1", user_id)
+    if not user or not user["current_node"]:
+        return 1.0
+    node = await db.fetchrow("SELECT debuff FROM map_nodes WHERE id=$1", user["current_node"])
+    if not node or not node["debuff"]:
+        return 1.0
+    debuff = node["debuff"]
+    if "防禦力" in debuff and "50%" in debuff and stat == "def":
+        return 0.5
+    return 1.0
+
+
 def _roll_drops(drop_table):
     items = {}
     for item_name, qty_min, qty_max, chance in drop_table:
@@ -95,10 +108,8 @@ NODE_ZONE_MAP = {
 
 
 NODE_BOSS_MAP = {
-    "初始草原": ["zombie"],
-    "翡翠森林": ["army", "maid_ribbon"],
-    "沿海小徑": ["army"],
-    "世界魔皇巢穴": ["maid_ribbons"],
+    "舊城邦": ["zombie", "army"],
+    "山林後的花園": ["maid_ribbon", "maid_ribbons"],
 }
 
 
@@ -159,7 +170,7 @@ class Combat(commands.Cog):
             enemy = random.choice(zone_data["enemies"])
             pet = await _get_active_pet_bonus(db, user["discord_id"])
             u_atk = int((user["attack"] + pet["atk"]) * atk_buff)
-            u_def = user["defense"] + pet["def"]
+            u_def = int((user["defense"] + pet["def"]) * await _get_node_debuff(db, user["discord_id"]))
 
             e_hp = enemy["hp"]
             e_atk = enemy["atk"]
@@ -261,13 +272,7 @@ class Combat(commands.Cog):
 
             pet = await _get_active_pet_bonus(db, user["discord_id"])
             u_atk = int((user["attack"] + pet["atk"]) * atk_buff)
-            u_def = user["defense"] + pet["def"]
-            u_hp = user.get("current_hp") or user["hp"]
-            if u_hp <= 0:
-                await interaction.response.send_message(
-                    "💀 你已經陣亡了！使用 `/revive` 復活。"
-                )
-                return
+            u_def = int((user["defense"] + pet["def"]) * await _get_node_debuff(db, user["discord_id"]))
             dmg_mult = 1.2 if score >= boss_data["perfect_power"] else 1.0
 
             e_hp = boss_data["hp"]
@@ -342,13 +347,7 @@ class Combat(commands.Cog):
 
             pet = await _get_active_pet_bonus(db, user["discord_id"])
             u_atk = int((user["attack"] + pet["atk"]) * atk_buff)
-            u_def = user["defense"] + pet["def"]
-            u_hp = user.get("current_hp") or user["hp"]
-            if u_hp <= 0:
-                await interaction.response.send_message(
-                    "💀 你已經陣亡了！使用 `/revive` 復活。"
-                )
-                return
+            u_def = int((user["defense"] + pet["def"]) * await _get_node_debuff(db, user["discord_id"]))
 
             turns = []
             turn_count = 0
@@ -413,6 +412,8 @@ class Combat(commands.Cog):
         app_commands.Choice(name="🍬 搗蛋精靈之森", value="搗蛋精靈之森"),
         app_commands.Choice(name="🏯 大士爺廟", value="大士爺廟"),
         app_commands.Choice(name="🥏 寵物天堂", value="寵物天堂"),
+        app_commands.Choice(name="🏚️ 舊城邦", value="舊城邦"),
+        app_commands.Choice(name="🌸 山林後的花園", value="山林後的花園"),
     ])
     async def move(self, interaction: discord.Interaction, target: str):
         pool = await get_pool()
