@@ -1,0 +1,194 @@
+{
+  "channels": {
+    "register": 969825727371423755,
+    "bag": 968157417789595709,
+    "daily": 969830297032097802,
+    "shop": 969879138271891486,
+    "chest": 945683117644079194,
+    "lottery": 953514247755821076,
+    "lottery_result": 953514184279224360,
+    "vote": 922114373915402301,
+    "important_vote": 921727644150693928,
+    "main_room": 921925385225125898,
+    "sub_room": 985372968525463582,
+    "nsfw": 921751363157884988,
+    "profile": 968157417789595709,
+    "combat": 968157417789595709,
+    "pray": 968178531248799775,
+    "meditate": 968178888126001152,
+    "arena": 968180073492340767,
+    "altar": 968180512345678901,
+    "world_boss": 968181234567890123,
+    "invest": 968182345678901234,
+    "pet": 968183456789012345,
+    "pet_heaven": 968184567890123456,
+    "admin": 921726467562684476,
+    "test": 921726556337623071
+  },
+  "channel_map": {
+    "register": 969825727371423755,
+    "profile": 968157417789595709,
+    "daily": 969830297032097802,
+    "bag": 968157417789595709,
+    "shop": 969879138271891486,
+    "shop_buy": 969879138271891486,
+    "shop_sell": 969879138271891486,
+    "use": 968157417789595709,
+    "explore": 968157417789595709,
+    "dungeon": 968157417789595709,
+    "altar": 968180512345678901,
+    "world_boss": 968181234567890123,
+    "arena": 968180073492340767,
+    "pray": 968178531248799775,
+    "meditate": 968178888126001152,
+    "ability": 968157417789595709,
+    "lottery_buy": 953514247755821076,
+    "lottery_auto": 953514247755821076,
+    "lottery_vip": 953514247755821076,
+    "lottery_check": 953514247755821076,
+    "market": 968182345678901234,
+    "invest_buy": 968182345678901234,
+    "invest_sell": 968182345678901234,
+    "invest_portfolio": 968182345678901234,
+    "pet_gacha": 968183456789012345,
+    "pet_list": 968183456789012345,
+    "pet_equip": 968183456789012345,
+    "pet_battle": 968184567890123456,
+    "achievements": 968157417789595709,
+    "rank": 968157417789595709,
+    "wyr": 921925385225125898,
+    "event": 921925385225125898,
+    "draw_lots": 922114373915402301,
+    "dice": 921925385225125898,
+    "guess_number": 921925385225125898,
+    "slot": 921925385225125898,
+    "answer_book": 921925385225125898,
+    "yesno": 921925385225125898,
+    "vote_create": 922114373915402301,
+    "clean": 921726467562684476,
+    "anon": 921726467562684476,
+    "dm_me": 0,
+    "nickname": 0,
+    "divider": 0,
+    "gif_nsfw": 921751363157884988
+  },
+  "combat_zones": {
+    "initial_grassland_outer": {
+      "name": "初始草原外圍",
+      "stamina": 8,
+      "enemies": [
+        {"name": "史萊姆", "hp": 5, "atk": 1, "def": 0, "drops": [["黏液", 1, 3, 0.8]]},
+        {"name": "野雞", "hp": 8, "atk": 2, "def": 1, "drops": [["羽毛", 1, 2, 0.7], ["肉", 1, 1, 0.3]]},
+        {"name": "兔兔", "hp": 6, "atk": 1, "def": 0, "drops": [["肉", 1, 2, 0.5], ["羊毛", 1, 1, 0.3]]},
+        {"name": "綿羊", "hp": 10, "atk": 1, "def": 2, "drops": [["羊毛", 2, 4, 0.8]]}
+      ]
+    },
+    "initial_grassland_inner": {
+      "name": "初始草原內部",
+      "stamina": 10,
+      "enemies": [
+        {"name": "史萊姆", "hp": 8, "atk": 2, "def": 1, "drops": [["黏液", 2, 5, 0.8]], "rare": true},
+        {"name": "野雞", "hp": 12, "atk": 3, "def": 2, "drops": [["羽毛", 2, 4, 0.7]], "rare": true},
+        {"name": "兔兔", "hp": 10, "atk": 2, "def": 1, "drops": [["肉", 2, 4, 0.5]], "rare": true},
+        {"name": "綿羊", "hp": 15, "atk": 2, "def": 3, "drops": [["羊毛", 3, 6, 0.8]], "rare": true},
+        {"name": "鹿", "hp": 20, "atk": 4, "def": 2, "drops": [["肉", 2, 3, 0.6], ["皮革", 1, 2, 0.4]]},
+        {"name": "狼", "hp": 25, "atk": 6, "def": 2, "drops": [["牙齒", 1, 2, 0.5], ["皮革", 1, 1, 0.3]]},
+        {"name": "野豬", "hp": 30, "atk": 5, "def": 4, "drops": [["肉", 3, 5, 0.7], ["骨頭", 1, 2, 0.5]]}
+      ]
+    },
+    "jade_forest_outer": {
+      "name": "翡翠森林外圍",
+      "stamina": 12,
+      "enemies": [
+        {"name": "猴子", "hp": 35, "atk": 7, "def": 3, "drops": [["骨頭", 1, 2, 0.6], ["牙齒", 1, 1, 0.4]]},
+        {"name": "蛇", "hp": 30, "atk": 8, "def": 2, "drops": [["毒液", 1, 2, 0.5], ["皮革", 1, 1, 0.3]]},
+        {"name": "哥布林", "hp": 40, "atk": 9, "def": 3, "drops": [["魔石", 1, 1, 0.3], ["骨頭", 1, 3, 0.6]]}
+      ]
+    },
+    "jade_forest_inner": {
+      "name": "翡翠森林內部",
+      "stamina": 15,
+      "enemies": [
+        {"name": "猴子", "hp": 50, "atk": 10, "def": 5, "drops": [["骨頭", 2, 4, 0.6]], "rare": true},
+        {"name": "蛇", "hp": 45, "atk": 11, "def": 3, "drops": [["毒液", 2, 4, 0.5]], "rare": true},
+        {"name": "哥布林", "hp": 55, "atk": 12, "def": 4, "drops": [["魔石", 1, 2, 0.4]], "rare": true},
+        {"name": "大蜥蜴", "hp": 70, "atk": 14, "def": 6, "drops": [["皮革", 2, 4, 0.5], ["牙齒", 1, 3, 0.4]]},
+        {"name": "食人魔", "hp": 90, "atk": 16, "def": 5, "drops": [["魔石", 2, 3, 0.4], ["緞帶", 1, 1, 0.05]]}
+      ]
+    },
+    "coastal_path": {
+      "name": "沿海小徑",
+      "stamina": 14,
+      "enemies": [
+        {"name": "巨蟹", "hp": 55, "atk": 12, "def": 7, "drops": [["骨頭", 2, 3, 0.5], ["魔石", 1, 2, 0.3]]},
+        {"name": "海妖", "hp": 60, "atk": 13, "def": 4, "drops": [["毒液", 2, 3, 0.5], ["緞帶", 1, 1, 0.08]]}
+      ]
+    }
+  },
+  "dungeon_bosses": {
+    "zombie": {
+      "name": "征服入侵殭屍",
+      "stamina": 10,
+      "recommended_power": 2800,
+      "perfect_power": 3000,
+      "hp": 120,
+      "atk": 10,
+      "def": 5,
+      "drops": [["骨頭", 3, 6, 0.8], ["魔石", 1, 2, 0.4], ["線香", 1, 3, 0.6]]
+    },
+    "army": {
+      "name": "征服入侵軍團",
+      "stamina": 30,
+      "recommended_power": 24300,
+      "perfect_power": 27000,
+      "hp": 400,
+      "atk": 25,
+      "def": 15,
+      "drops": [["皮革", 3, 6, 0.7], ["魔石", 2, 4, 0.5], ["線香", 2, 5, 0.6]]
+    },
+    "maid_ribbon": {
+      "name": "解開女僕的緞帶",
+      "stamina": 50,
+      "recommended_power": 218700,
+      "perfect_power": 243000,
+      "hp": 2000,
+      "atk": 60,
+      "def": 40,
+      "drops": [["緞帶", 1, 3, 0.6], ["魔石", 3, 7, 0.5], ["轉法輪", 1, 2, 0.3]]
+    },
+    "maid_ribbons": {
+      "name": "解開女僕們的緞帶",
+      "stamina": 70,
+      "recommended_power": 1749600,
+      "perfect_power": 2187000,
+      "hp": 8000,
+      "atk": 150,
+      "def": 100,
+      "drops": [["緞帶", 3, 8, 0.7], ["魔石", 5, 12, 0.5], ["轉法輪", 2, 5, 0.4]]
+    }
+  },
+  "world_boss": {
+    "name": "彩虹羊",
+    "hp": 600000,
+    "atk": 20,
+    "def": 50,
+    "stamina": 15
+  },
+  "game_params": {
+    "stamina_regen_per_minute": 1,
+    "shop_price_update_minutes": 30,
+    "stock_price_update_minutes": 15,
+    "max_battle_log_rounds": 10,
+    "default_stamina": 150,
+    "default_attack": 10,
+    "default_defense": 5,
+    "default_hp": 100,
+    "daily_base_an_bi": 100,
+    "daily_streak_bonus": 20,
+    "gold_card_yi_bi": 20,
+    "diamond_card_yi_bi": 50,
+    "pray_cost_xian_xiang": 1,
+    "pray_base_xiu_wei": 3,
+    "meditate_xiu_wei_regen": 5
+  }
+}

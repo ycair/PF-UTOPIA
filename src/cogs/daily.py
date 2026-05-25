@@ -1,0 +1,90 @@
+from datetime import date
+
+import discord
+from discord.ext import commands
+from discord import app_commands
+
+from src.database import get_pool, get_user
+from src.hotconfig import game_params
+from src.channel_guard import require_channel
+
+
+class Daily(commands.Cog):
+    def __init__(self, bot: commands.Bot):
+        self.bot = bot
+
+    @app_commands.command(name="daily", description="每日簽到，領取安幣獎勵")
+    async def daily(self, interaction: discord.Interaction):
+        if not await require_channel(interaction, "daily"):
+            return
+        base_an_bi = await game_params.daily_base_an_bi or 100
+        streak_bonus = await game_params.daily_streak_bonus or 20
+        gold_yi_bi = await game_params.gold_card_yi_bi or 20
+        diamond_yi_bi = await game_params.diamond_card_yi_bi or 50
+        pool = await get_pool()
+        async with pool.acquire() as db:
+            user = await get_user(db, interaction.user.id)
+            if not user:
+                await interaction.response.send_message(
+                    "🔴 請先使用 `/register` 註冊！", ephemeral=True
+                )
+                return
+
+            today = date.today()
+            last_signin = user["last_signin"]
+            streak = user["signin_streak"]
+
+            if last_signin and isinstance(last_signin, date):
+                if last_signin == today:
+                    await interaction.response.send_message(
+                        "🔴 你今天已經簽到過了！明天再來吧。", ephemeral=True
+                    )
+                    return
+                delta = (today - last_signin).days
+                if delta == 1:
+                    streak += 1
+                else:
+                    streak = 1
+            else:
+                streak = 1
+
+            an_bi_reward = base_an_bi + (streak - 1) * streak_bonus
+            yi_bi_reward = 0
+            card_info = ""
+
+            monthly_card = user["monthly_card"]
+            expiry = user["monthly_expiry"]
+            if monthly_card and expiry and isinstance(expiry, date) and expiry >= today:
+                if monthly_card == "gold":
+                    yi_bi_reward = gold_yi_bi
+                    card_info = "（黃金月卡加成）"
+                elif monthly_card == "diamond":
+                    yi_bi_reward = diamond_yi_bi
+                    card_info = "（鑽石月卡加成）"
+
+            await db.execute(
+                "UPDATE users SET an_bi=an_bi+$1, yi_bi=yi_bi+$2, signin_streak=$3, last_signin=$4 "
+                "WHERE discord_id=$5",
+                an_bi_reward, yi_bi_reward, streak, today, str(interaction.user.id),
+            )
+
+            await db.execute(
+                "INSERT INTO signin_logs (user_id, signin_date, streak, reward_an_bi, reward_yi_bi) "
+                "VALUES ($1,$2,$3,$4,$5) ON CONFLICT (user_id, signin_date) DO NOTHING",
+                str(interaction.user.id), today, streak, an_bi_reward, yi_bi_reward,
+            )
+
+        embed = discord.Embed(
+            title="🎉 簽到成功！",
+            color=discord.Color.green(),
+        )
+        embed.add_field(name="本次簽到獎勵", value=f"🪙 安幣 +{an_bi_reward} 元", inline=True)
+        if yi_bi_reward > 0:
+            embed.add_field(name="月卡獎勵", value=f"💵 逸幣 +{yi_bi_reward} 元 {card_info}", inline=True)
+        embed.add_field(name="連續簽到", value=f"🔥 {streak} 天", inline=True)
+        embed.set_footer(text="每天簽到累積獎勵越多！")
+        await interaction.response.send_message(embed=embed)
+
+
+async def setup(bot: commands.Bot):
+    await bot.add_cog(Daily(bot))

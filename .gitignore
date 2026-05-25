@@ -1,0 +1,29 @@
+# Tokens & secrets
+src/config.py
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+*.egg-info/
+dist/
+build/
+
+# PostgreSQL
+*.pid
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Investigation temp files
+investigation_results.json
+
+# Cloudflare tunnel config
+~/.cloudflared/
