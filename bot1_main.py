@@ -1,7 +1,6 @@
 import asyncio
 import sys
 import os
-import random
 import json
 from datetime import datetime, timezone, timedelta
 
@@ -52,13 +51,6 @@ class UtopiaBot1(commands.Bot):
                 f"請回到 <#{GUILD_ID}> 伺服器遊玩～"
             )
             return
-        pool = await get_pool()
-        async with pool.acquire() as db:
-            an_bi = random.randint(1, 3)
-            await db.execute(
-                "UPDATE users SET an_bi=an_bi+$1 WHERE discord_id=$2",
-                an_bi, str(message.author.id),
-            )
         await self.process_commands(message)
 
     @tasks.loop(seconds=15)
