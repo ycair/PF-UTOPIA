@@ -73,8 +73,8 @@ async def api_stocks(request: web.Request):
         for s in stocks:
             s = dict(s)
             prev = await db.fetchval("SELECT price FROM stock_history WHERE stock_id=$1 ORDER BY recorded_at DESC LIMIT 1 OFFSET 1", s["id"])
-            prev = prev or s["current_price"]
-            change = round((s["current_price"]-prev)/prev*100,1)
+            prev = prev or s["current_price"] or 1
+            change = round((s["current_price"]-prev)/max(prev,1)*100,1)
             result.append({"name":s["name"],"emoji":s["emoji"],"current_price":s["current_price"],"change":change})
         return web.json_response(result)
 
