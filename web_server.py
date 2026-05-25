@@ -101,13 +101,14 @@ async def rankings(request: web.Request, cat: str):
 
 def create_web_app() -> web.Application:
     app = web.Application()
+    app.router.add_get("/", lambda r: web.FileResponse(os.path.join(WEB_DIR, "index.html")))
     app.router.add_get("/api/auth/callback", auth_callback)
     app.router.add_get("/api/me", api_me)
     app.router.add_get("/api/stocks", api_stocks)
     app.router.add_get("/api/shop/prices", api_shop_prices)
     app.router.add_get("/api/rankings/power", lambda r: rankings(r,"power"))
     app.router.add_get("/api/rankings/wealth", lambda r: rankings(r,"wealth"))
-    app.router.add_static("/", path=WEB_DIR, show_index=True)
+    app.router.add_static("/", path=WEB_DIR, show_index=False)
     return app
 
 
