@@ -122,6 +122,14 @@ class Combat(commands.Cog):
                 )
                 return
 
+            u_hp = user.get("current_hp") or user["hp"]
+
+            if u_hp <= 0:
+                await interaction.response.send_message(
+                    "💀 你已經陣亡了！使用 `/revive` 花費 1,500 托幣復活。"
+                )
+                return
+
             atk_buff = user["atk_buff_mult"] if user.get("atk_buff_mult") else 1.0
             await db.execute(
                 "UPDATE users SET stamina=stamina-$1 WHERE discord_id=$2",
@@ -132,8 +140,6 @@ class Combat(commands.Cog):
             pet = await _get_active_pet_bonus(db, user["discord_id"])
             u_atk = int((user["attack"] + pet["atk"]) * atk_buff)
             u_def = user["defense"] + pet["def"]
-            u_hp_total = user["hp"] + pet["hp"]
-            u_hp = u_hp_total
 
             e_hp = enemy["hp"]
             e_atk = enemy["atk"]
@@ -163,16 +169,21 @@ class Combat(commands.Cog):
                 await _apply_rewards(db, user["discord_id"], rewards)
 
             await db.execute(
+                "UPDATE users SET current_hp=$1 WHERE discord_id=$2",
+                max(0, round(u_hp, 1)), str(interaction.user.id),
+            )
+            await db.execute(
                 "INSERT INTO battle_logs (user_id, zone, enemy, result, turns, damage_dealt, damage_taken, rewards) "
                 "VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
                 str(interaction.user.id), zone_data["name"], enemy["name"], result, turn_count,
                 0, 0, _rewards_json(rewards),
             )
 
+        dead = u_hp <= 0
         embed = discord.Embed(
-            title=f"{'✅ 勝利！' if won else '🔴 戰鬥失敗'}",
+            title=f"{'💀 陣亡！' if dead else '✅ 勝利！' if won else '🔴 戰鬥失敗'}",
             description=f"**{interaction.user.display_name}** 在 **{zone_data['name']}** 遭遇 **{enemy['name']}**",
-            color=discord.Color.green() if won else discord.Color.red(),
+            color=discord.Color.dark_grey() if dead else discord.Color.green() if won else discord.Color.red(),
         )
         embed.add_field(name=f"戰鬥記錄（{turn_count} 回合）", value=f"```{await build_battle_log(turns)}```", inline=False)
         if won:
@@ -182,7 +193,7 @@ class Combat(commands.Cog):
             embed.add_field(name="🎁 掉落獎勵", value="\n".join(reward_lines) if reward_lines else "沒有掉落物品", inline=False)
             if atk_buff > 1.0:
                 embed.add_field(name="⚡ 攻擊加成", value=f"膜拜 buff 剩餘 {user.get('atk_buff_expires','?')}", inline=True)
-        embed.set_footer(text=f"剩餘體力：{user['stamina'] - stamina_cost} 點")
+        embed.set_footer(text=f"剩餘體力：{user['stamina'] - stamina_cost} 點 | HP：{max(0, round(u_hp, 1))}/{user['hp']}")
         await interaction.response.send_message(embed=embed)
 
     @app_commands.command(name="dungeon", description="挑戰副本 Boss")
@@ -230,8 +241,12 @@ class Combat(commands.Cog):
             pet = await _get_active_pet_bonus(db, user["discord_id"])
             u_atk = int((user["attack"] + pet["atk"]) * atk_buff)
             u_def = user["defense"] + pet["def"]
-            u_hp_total = user["hp"] + pet["hp"]
-            u_hp = u_hp_total
+            u_hp = user.get("current_hp") or user["hp"]
+            if u_hp <= 0:
+                await interaction.response.send_message(
+                    "💀 你已經陣亡了！使用 `/revive` 復活。"
+                )
+                return
             dmg_mult = 1.2 if score >= boss_data["perfect_power"] else 1.0
 
             e_hp = boss_data["hp"]
@@ -258,16 +273,21 @@ class Combat(commands.Cog):
                 await _apply_rewards(db, user["discord_id"], rewards)
 
             await db.execute(
+                "UPDATE users SET current_hp=$1 WHERE discord_id=$2",
+                max(0, round(u_hp, 1)), str(interaction.user.id),
+            )
+            await db.execute(
                 "INSERT INTO battle_logs (user_id, zone, enemy, result, turns, damage_dealt, damage_taken, rewards) "
                 "VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
                 str(interaction.user.id), boss_data["name"], boss_data["name"],
                 "win" if won else "lose", turn_count, 0, 0, _rewards_json(rewards),
             )
 
+        dead = u_hp <= 0
         embed = discord.Embed(
-            title=f"{'✅ 討伐成功！' if won else '🔴 戰鬥失敗'}",
+            title=f"{'💀 陣亡！' if dead else '✅ 討伐成功！' if won else '🔴 戰鬥失敗'}",
             description=f"副本：**{boss_data['name']}**",
-            color=discord.Color.gold() if won else discord.Color.red(),
+            color=discord.Color.dark_grey() if dead else discord.Color.gold() if won else discord.Color.red(),
         )
         embed.add_field(name=f"戰鬥記錄（{turn_count} 回合）", value=f"```{await build_battle_log(turns)}```", inline=False)
         if won:
@@ -302,8 +322,12 @@ class Combat(commands.Cog):
             pet = await _get_active_pet_bonus(db, user["discord_id"])
             u_atk = int((user["attack"] + pet["atk"]) * atk_buff)
             u_def = user["defense"] + pet["def"]
-            u_hp_total = user["hp"] + pet["hp"]
-            u_hp = u_hp_total
+            u_hp = user.get("current_hp") or user["hp"]
+            if u_hp <= 0:
+                await interaction.response.send_message(
+                    "💀 你已經陣亡了！使用 `/revive` 復活。"
+                )
+                return
 
             turns = []
             turn_count = 0
@@ -329,6 +353,10 @@ class Combat(commands.Cog):
                     tuo_reward, wu_reward, str(interaction.user.id),
                 )
 
+            await db.execute(
+                "UPDATE users SET current_hp=$1 WHERE discord_id=$2",
+                max(0, round(u_hp, 1)), str(interaction.user.id),
+            )
             await db.execute(
                 "INSERT INTO battle_logs (user_id, zone, enemy, result, turns, damage_dealt, damage_taken, rewards) "
                 "VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
@@ -459,6 +487,29 @@ class Combat(commands.Cog):
                     )
             else:
                 await interaction.response.send_message(f"📍 你目前在 **{cur['name'] if cur else '未知'}**。")
+
+    @app_commands.command(name="revive", description="花費 1,500 托幣復活，出生於主城滿血")
+    async def revive(self, interaction: discord.Interaction):
+        pool = await get_pool()
+        async with pool.acquire() as db:
+            user = await get_user(db, interaction.user.id)
+            if not user:
+                await interaction.response.send_message("🔴 請先註冊！", ephemeral=True)
+                return
+            if (user.get("current_hp") or user["hp"]) > 0:
+                await interaction.response.send_message("你還活著，不需要復活。", ephemeral=True)
+                return
+            if user["tuo_bi"] < 1500:
+                await interaction.response.send_message(
+                    f"🔴 托幣不足！需要 1,500 元，當前 {user['tuo_bi']:,} 元。"
+                )
+                return
+            main = await db.fetchval("SELECT id FROM map_nodes WHERE name='烏托邦主城'")
+            await db.execute(
+                "UPDATE users SET current_hp=hp, current_node=$1, tuo_bi=tuo_bi-1500 WHERE discord_id=$2",
+                main, str(interaction.user.id),
+            )
+        await interaction.response.send_message("✨ 你已復活！出生於 **烏托邦主城**，滿血狀態。")
 
 
 async def setup(bot: commands.Bot):

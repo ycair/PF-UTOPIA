@@ -145,7 +145,7 @@ class Faith(commands.Cog):
 
             await db.execute(
                 "UPDATE users SET daily_incense=daily_incense-$1, last_pray_date=$2, "
-                "stamina=max_stamina, atk_buff_mult=$3, atk_buff_expires=NOW()+INTERVAL'30 minutes', "
+                "stamina=max_stamina, current_hp=hp, atk_buff_mult=$3, atk_buff_expires=NOW()+INTERVAL'30 minutes', "
                 "xiu_wei_progress=xiu_wei_progress+1 WHERE discord_id=$4",
                 INCENSE_PER_PRAY, today, PRAY_ATK_MULT, str(interaction.user.id),
             )

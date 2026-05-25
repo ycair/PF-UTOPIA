@@ -1,4 +1,4 @@
-from datetime import timezone, timedelta
+from datetime import timezone, timedelta, datetime
 
 import discord
 from discord.ext import commands
@@ -40,6 +40,50 @@ class Profile(commands.Cog):
         )
         for name, value in user_embed_fields(u):
             embed.add_field(name=name, value=value, inline=True)
+
+        current_hp = u.get("current_hp")
+        max_hp = u["hp"]
+        if current_hp is not None:
+            hp_pct = max(0, current_hp / max(max_hp, 1) * 100)
+            hp_bar = "❤️" * int(hp_pct / 10) + "🖤" * (10 - int(hp_pct / 10))
+            embed.add_field(
+                name=f"❤️ 血量",
+                value=f"{hp_bar}\n{max(0, current_hp):.0f} / {max_hp}",
+                inline=True,
+            )
+
+        node_id = u.get("current_node")
+        if node_id:
+            pool = await get_pool()
+            async with pool.acquire() as db:
+                node = await db.fetchrow("SELECT name, is_safe, node_type FROM map_nodes WHERE id=$1", node_id)
+            if node:
+                location = f"📍 **{node['name']}**"
+                if node["is_safe"]:
+                    if node["node_type"] == "capital":
+                        location += "\n🛡️ 主城保護：不受傷害"
+                    elif node["node_type"] == "temple":
+                        location += "\n🛡️ 鬼王庇佑：不受傷害"
+                    else:
+                        location += "\n🛡️ 安全區域"
+                embed.add_field(name="目前位置", value=location, inline=True)
+
+        buff_expires = u.get("atk_buff_expires")
+        buff_mult = u.get("atk_buff_mult", 1.0)
+        if buff_expires and buff_mult > 1.0:
+            now = datetime.now(TZ_TW)
+            if buff_expires.tzinfo is None:
+                buff_expires = buff_expires.replace(tzinfo=TZ_TW)
+            if buff_expires > now:
+                remaining = buff_expires - now
+                m = int(remaining.total_seconds() // 60)
+                s = int(remaining.total_seconds() % 60)
+                embed.add_field(
+                    name="⚡ 鬼王加持",
+                    value=f"攻擊力 +{int((buff_mult - 1) * 100)}%\n剩餘 {m} 分 {s} 秒",
+                    inline=False,
+                )
+
         embed.set_thumbnail(url=target.display_avatar.url)
         reg_time = u['registered_at'].astimezone(TZ_TW).strftime('%Y-%m-%d %H:%M')
         embed.set_footer(text=f"註冊於 {reg_time} (UTC+8)")
