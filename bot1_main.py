@@ -66,7 +66,8 @@ class UtopiaBot1(commands.Bot):
 
     async def _check_arrival(self, db, user_id, tz, secs_per_dist):
         user = await db.fetchrow(
-            "SELECT current_node, travel_target, travel_start, travel_path FROM users WHERE discord_id=$1",
+            "SELECT current_node, travel_target, travel_start, travel_path, "
+            "travel_message_id, travel_channel_id, sprint_until FROM users WHERE discord_id=$1",
             user_id,
         )
         if not user or not user["travel_target"] or not user["travel_start"]:
@@ -81,69 +82,113 @@ class UtopiaBot1(commands.Bot):
         )
         if not edge:
             return
-        secs = edge["base_distance"] * secs_per_dist
-        if (now - start).total_seconds() >= secs:
-            old_node = user["current_node"]
-            arrived = user["travel_target"]
+
+        sprint_until = user.get("sprint_until")
+        speed_mult = 0.0
+        if sprint_until:
+            if sprint_until.tzinfo is None:
+                sprint_until = sprint_until.replace(tzinfo=tz)
+            if sprint_until > now:
+                speed_mult = 0.5
+
+        secs = edge["base_distance"] * secs_per_dist * (1 - speed_mult)
+        arrived = (now - start).total_seconds() >= secs
+
+        remaining = max(0, int(secs - (now - start).total_seconds()))
+        sprint_active = sprint_until and sprint_until.tzinfo is None and sprint_until > now if sprint_until else False
+
+        if not arrived:
+            cur_name = await db.fetchval("SELECT name FROM map_nodes WHERE id=$1", user["current_node"])
+            target_name = await db.fetchval("SELECT name FROM map_nodes WHERE id=$1", user["travel_target"])
             path = user.get("travel_path") or []
+            path_names = [target_name]
+            for pid in path:
+                n = await db.fetchval("SELECT name FROM map_nodes WHERE id=$1", pid)
+                if n: path_names.append(n)
+            route = " → ".join(path_names)
 
+            try:
+                channel = self.get_channel(int(user["travel_channel_id"])) if user["travel_channel_id"] else None
+                if channel:
+                    msg = await channel.fetch_message(int(user["travel_message_id"]))
+                    embed = discord.Embed(title="🚶 自動導航", color=discord.Color.teal())
+                    embed.add_field(name="📍 目前位置", value=cur_name or "?", inline=True)
+                    embed.add_field(name="⏱️ 剩餘", value=f"{remaining} 秒 → **{target_name or '?'}**", inline=True)
+                    embed.add_field(name="🗺️ 路線", value=f"**{route}**", inline=False)
+                    sprint_tag = "⚡ 奔跑中！" if sprint_active else ""
+                    embed.set_footer(text=sprint_tag or "移動中...")
+                    await msg.edit(embed=embed)
+            except:
+                pass
+            return
+
+        old_node = user["current_node"]
+        arrived_node_id = user["travel_target"]
+        path = user.get("travel_path") or []
+
+        await db.execute(
+            "UPDATE users SET current_node=$1 WHERE discord_id=$2",
+            arrived_node_id, user_id,
+        )
+
+        target_name = await db.fetchval("SELECT name FROM map_nodes WHERE id=$1", arrived_node_id)
+        target_node = await db.fetchrow(
+            "SELECT name, is_safe, node_type FROM map_nodes WHERE id=$1", arrived_node_id
+        )
+
+        if path:
+            next_target = path[0]
+            remaining_path = path[1:] if len(path) > 1 else []
+            next_edge = await db.fetchrow(
+                "SELECT base_distance FROM map_edges WHERE (from_node=$1 AND to_node=$2) OR (from_node=$2 AND to_node=$1)",
+                arrived_node_id, next_target,
+            )
+            travel_secs = next_edge["base_distance"] * secs_per_dist if next_edge else 60
             await db.execute(
-                "UPDATE users SET current_node=$1 WHERE discord_id=$2",
-                arrived, user_id,
+                "UPDATE users SET travel_target=$1, travel_path=$2, travel_start=NOW() WHERE discord_id=$3",
+                next_target, remaining_path, user_id,
             )
+            next_name = await db.fetchval("SELECT name FROM map_nodes WHERE id=$1", next_target)
+            remaining_names = [next_name]
+            for pid in remaining_path:
+                n = await db.fetchval("SELECT name FROM map_nodes WHERE id=$1", pid)
+                if n: remaining_names.append(n)
+            route = " → ".join(remaining_names)
 
-            target_node = await db.fetchrow(
-                "SELECT name, is_safe, node_type FROM map_nodes WHERE id=$1", arrived
+            try:
+                channel = self.get_channel(int(user["travel_channel_id"])) if user["travel_channel_id"] else None
+                if channel:
+                    msg = await channel.fetch_message(int(user["travel_message_id"]))
+                    embed = discord.Embed(title="🚶 自動導航", color=discord.Color.teal())
+                    embed.add_field(name="📍 抵達", value=f"**{target_name}**，繼續前進", inline=True)
+                    embed.add_field(name="⏱️ 剩餘路線", value=f"{route}（{travel_secs} 秒）", inline=True)
+                    embed.set_footer(text="自動導航中...")
+                    await msg.edit(embed=embed)
+            except:
+                pass
+        else:
+            await db.execute(
+                "UPDATE users SET travel_target=NULL, travel_start=NULL, travel_path=NULL, "
+                "travel_message_id=NULL, travel_channel_id=NULL WHERE discord_id=$1",
+                user_id,
             )
+            try:
+                channel = self.get_channel(int(user["travel_channel_id"])) if user["travel_channel_id"] else None
+                if channel:
+                    msg = await channel.fetch_message(int(user["travel_message_id"]))
+                    embed = discord.Embed(title="✅ 已抵達！", description=f"**{target_name}**", color=discord.Color.green())
+                    heal_text = ""
+                    if target_node and target_node["is_safe"] and target_node["node_type"] == "capital":
+                        heal_text = "\n❤️ 主城保護：血量已恢復"
+                    embed.set_footer(text=f"旅程結束{heal_text}")
+                    await msg.edit(embed=embed, view=None)
+            except:
+                pass
 
-            if path:
-                next_target = path[0]
-                remaining = path[1:] if len(path) > 1 else []
-                next_edge = await db.fetchrow(
-                    "SELECT base_distance FROM map_edges WHERE (from_node=$1 AND to_node=$2) OR (from_node=$2 AND to_node=$1)",
-                    arrived, next_target,
-                )
-                secs_per = 30
-                travel_secs = next_edge["base_distance"] * secs_per if next_edge else 60
-                await db.execute(
-                    "UPDATE users SET travel_target=$1, travel_path=$2, travel_start=NOW() WHERE discord_id=$3",
-                    next_target, remaining, user_id,
-                )
-                next_name = await db.fetchval("SELECT name FROM map_nodes WHERE id=$1", next_target)
-                remaining_names = []
-                for pid in remaining:
-                    n = await db.fetchval("SELECT name FROM map_nodes WHERE id=$1", pid)
-                    if n:
-                        remaining_names.append(n)
-                route = " → ".join([target_node["name"]] + [next_name] + remaining_names)
-                guild = self.get_guild(921725752796393483)
-                if guild:
-                    member = guild.get_member(int(user_id))
-                    if member:
-                        try:
-                            await member.send(
-                                f"🚶 抵達 **{target_node['name']}**，自動繼續：**{route}**"
-                            )
-                        except:
-                            pass
-            else:
-                await db.execute(
-                    "UPDATE users SET travel_target=NULL, travel_start=NULL, travel_path=NULL WHERE discord_id=$1",
-                    user_id,
-                )
-                guild = self.get_guild(921725752796393483)
-                if guild:
-                    member = guild.get_member(int(user_id))
-                    if member:
-                        try:
-                            await member.send(f"✅ 已抵達 **{target_node['name']}**！")
-                        except:
-                            pass
-
-            if target_node and target_node["is_safe"] and target_node["node_type"] == "capital":
-                await db.execute(
-                    "UPDATE users SET current_hp=hp WHERE discord_id=$1", user_id
-                )
+        if target_node and target_node["is_safe"] and target_node["node_type"] == "capital":
+            await db.execute(
+                "UPDATE users SET current_hp=hp WHERE discord_id=$1", user_id
+            )
 
     @tasks.loop(minutes=STOCK_PRICE_UPDATE_MINUTES)
     async def price_update_loop(self):

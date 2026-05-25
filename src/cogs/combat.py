@@ -136,6 +136,41 @@ NODE_BOSS_MAP = {
 }
 
 
+class MoveView(discord.ui.View):
+    def __init__(self, user_id, timeout=600):
+        super().__init__(timeout=timeout)
+        self.user_id = user_id
+        self.sprint_used = False
+
+    @discord.ui.button(label="🏃 奔跑", style=discord.ButtonStyle.green, row=0)
+    async def sprint(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if str(interaction.user.id) != str(self.user_id):
+            await interaction.response.send_message("這不是你的移動面板。", ephemeral=True)
+            return
+        if self.sprint_used:
+            await interaction.response.send_message("🔴 奔跑冷卻中（15秒）。", ephemeral=True)
+            return
+        pool = await get_pool()
+        async with pool.acquire() as db:
+            cooldown = await db.fetchval("SELECT sprint_cooldown FROM users WHERE discord_id=$1", str(self.user_id))
+            now = datetime.now(TZ)
+            if cooldown and cooldown > now:
+                await interaction.response.send_message(
+                    f"🔴 奔跑冷卻中，{(cooldown - now).seconds} 秒後可用。", ephemeral=True
+                )
+                return
+            await db.execute(
+                "UPDATE users SET sprint_until=NOW()+INTERVAL'5 seconds', "
+                "sprint_cooldown=NOW()+INTERVAL'15 seconds' WHERE discord_id=$1",
+                str(self.user_id),
+            )
+        self.sprint_used = True
+        button.disabled = True
+        button.label = "🏃 奔跑中！(+50%)"
+        await interaction.response.edit_message(view=self)
+        await interaction.followup.send("⚡ 奔跑加速！移動速度 +50%，持續 5 秒。", ephemeral=True)
+
+
 class Combat(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -500,9 +535,22 @@ class Combat(commands.Cog):
             )
 
         route_str = " → ".join(path_names)
-        await interaction.response.send_message(
-            f"🚶 自動導航：**{route_str}**\n"
-            f"下一步 → **{path_names[0]}**（{travel_secs} 秒）"
+        embed = discord.Embed(
+            title="🚶 自動導航",
+            description=f"路線：**{route_str}**",
+            color=discord.Color.teal(),
+        )
+        embed.add_field(name="📍 目前位置", value=interaction.channel.name, inline=True)
+        embed.add_field(name="⏱️ 下一步", value=f"**{path_names[0]}**（{travel_secs} 秒）", inline=True)
+        eta_str = eta.strftime('%H:%M:%S')
+        embed.set_footer(text=f"預計抵達 {eta_str} | 奔跑 +50% 速度 5秒 / 冷卻 15秒")
+
+        view = MoveView(str(interaction.user.id))
+        await interaction.response.send_message(embed=embed, view=view)
+        msg = await interaction.original_response()
+        await db.execute(
+            "UPDATE users SET travel_message_id=$1, travel_channel_id=$2 WHERE discord_id=$3",
+            str(msg.id), str(interaction.channel_id), str(interaction.user.id),
         )
 
     @app_commands.command(name="travel_status", description="查看當前移動狀態或抵達")
