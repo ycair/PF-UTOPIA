@@ -251,7 +251,7 @@ CREATE TABLE user_sessions (
 - 色盤限制 16 色（NES palette）
 - 字型：壓縮像素字體（如 Press Start 2P，Google Fonts 免費）
 - Discord 頭像用 Canvas 降解析度重繪為 pixel art
-- 節點用不同 emoji/sprite 區分類型（🏰 capital / 🌱 wild / ⛪ sanctuary / 💣 arena / 😈 dungeon）
+- 節點用不同 emoji/sprite 區分類型（🏰 capital / 🌱 wild / ⛪ sanctuary / 🏯 temple / 💣 arena / 😈 dungeon）
 - 道路用像素虛線連接，危險路段紅色閃爍
 - 玩家所在節點用發光邊框標示，移動中的玩家顯示沿道路移動的像素小人
 
@@ -293,7 +293,7 @@ CREATE TABLE user_sessions (
 CREATE TABLE map_nodes (
     id              SERIAL PRIMARY KEY,
     name            TEXT NOT NULL,
-    node_type       TEXT NOT NULL CHECK (node_type IN ('capital','town','wild','dungeon','sanctuary','arena')),
+    node_type       TEXT NOT NULL CHECK (node_type IN ('capital','town','wild','dungeon','sanctuary','temple','arena')),
     faction         TEXT DEFAULT 'neutral',
     security        INTEGER DEFAULT 50 CHECK (security BETWEEN 0 AND 100),
     description     TEXT DEFAULT '',
@@ -419,7 +419,7 @@ async def update_node_price(db, node_id, item_id):
 | 🏰 城內安全區 | 主城及直連的城內節點（競技場、彩券中心、投資交易所、女僕教堂）**不會遭遇野怪**。玩家在城內可安心交易、膜拜、社交 |
 | 🌱 出城唯一路徑 | 所有野外/副本節點必須**先經過初始草原**才能抵達。初始草原是主城與外界之間唯一的閘道 |
 | ⚔️ 城外危險 | 離開城內範圍後**隨時可能被攻擊**。治安值愈低的節點遇敵率愈高 |
-| 🌲 深層區域 | 大士爺廟需穿過翡翠森林才能抵達；世界魔皇巢穴是翡翠森林最深處的死路 |
+| 🌲 深層區域 | 大士爺廟需穿過翡翠森林才能抵達，廟內受鬼王神力庇佑；世界魔皇巢穴是翡翠森林最深處的死路 |
 
 #### 地圖拓樸
 
@@ -466,11 +466,10 @@ async def update_node_price(db, node_id, item_id):
 | 🌊 沿海小徑 | wild | ❌ | `/explore` 沿海 | 骨頭、魔石、毒液、緞帶 | 巨蟹、海妖 |
 | 😈 世界魔皇巢穴 | dungeon | ❌ | `/world_boss` | 緞帶、魔石（大量）、轉法輪 | 彩虹羊 |
 | 🍬 搗蛋精靈之森 | wild | ❌ | 精靈供奉 | 糖果、毒液 | 搗蛋精靈（初/中/高） |
-| 🏯 大士爺廟 | sanctuary | ⚠️ | 節慶活動 | 糖果、轉法輪 | —（但路途危險） |
+| 🏯 大士爺廟 | temple | ✅ | 節慶活動、修行 | 糖果、轉法輪、功德 | —（鬼王鎮守） |
 | 🥏 寵物天堂 | wild | ❌ | `/pet_battle` | 寵物 EXP | 野生寵物 |
 
-> ⚠️ 大士爺廟本身安全（sanctuary），但必須穿過翡翠森林，路途危險。
-> 城內五個節點（主城 + 四個直連）互為安全區，移動距離短（1~3 分鐘），無遇敵風險。
+> **大士爺廟**：供奉台灣民間信仰中的「大士爺」（面燃大士／普渡公），相傳為觀世音菩薩化現的鬼王，統領陰間眾鬼。玩家穿過翡翠森林抵達後，受鬼王神力庇佑，廟內不受任何怪物侵擾。廟中可進行特殊修行、節慶祭祀活動。
 
 ### 玩家視角差異化
 
