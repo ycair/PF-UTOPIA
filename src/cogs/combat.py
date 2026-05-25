@@ -468,46 +468,50 @@ class Combat(commands.Cog):
 
             await interaction.response.defer()
 
-            edge = await db.fetchrow(
-                "SELECT * FROM map_edges WHERE (from_node=$1 AND to_node=$2) OR (from_node=$2 AND to_node=$1)",
-                current, target_node["id"],
-            )
+            try:
+                edge = await db.fetchrow(
+                    "SELECT * FROM map_edges WHERE (from_node=$1 AND to_node=$2) OR (from_node=$2 AND to_node=$1)",
+                    current, target_node["id"],
+                )
 
-            if edge:
-                path_ids = [current, target_node["id"]]
-            else:
-                path_ids = await _find_path(db, current, target_node["id"])
-                if not path_ids:
-                    await interaction.followup.send("🔴 無法抵達此節點。", ephemeral=True)
-                    return
+                if edge:
+                    path_ids = [current, target_node["id"]]
+                else:
+                    path_ids = await _find_path(db, current, target_node["id"])
+                    if not path_ids:
+                        await interaction.followup.send("🔴 無法抵達此節點。", ephemeral=True)
+                        return
 
-            secs_per = await game_params.move_seconds_per_distance or 30
-            next_node = path_ids[1]
-            next_edge = await db.fetchrow(
-                "SELECT * FROM map_edges WHERE (from_node=$1 AND to_node=$2) OR (from_node=$2 AND to_node=$1)",
-                current, next_node,
-            )
-            travel_secs = next_edge["base_distance"] * secs_per
-            eta = datetime.now(TZ) + timedelta(seconds=travel_secs)
-            remaining = path_ids[2:] if len(path_ids) > 2 else []
+                secs_per = await game_params.move_seconds_per_distance or 30
+                next_node = path_ids[1]
+                next_edge = await db.fetchrow(
+                    "SELECT * FROM map_edges WHERE (from_node=$1 AND to_node=$2) OR (from_node=$2 AND to_node=$1)",
+                    current, next_node,
+                )
+                travel_secs = next_edge["base_distance"] * secs_per
+                remaining = path_ids[2:] if len(path_ids) > 2 else []
 
-            path_names = []
-            for pid in path_ids[1:]:
-                n = await db.fetchrow("SELECT name FROM map_nodes WHERE id=$1", pid)
-                path_names.append(n["name"] if n else "?")
+                path_names = []
+                for pid in path_ids[1:]:
+                    n = await db.fetchrow("SELECT name FROM map_nodes WHERE id=$1", pid)
+                    path_names.append(n["name"] if n else "?")
 
-            await db.execute(
-                "UPDATE users SET travel_target=$1, travel_path=$2, travel_start=NOW() WHERE discord_id=$3",
-                next_node, remaining, str(interaction.user.id),
-            )
+                await db.execute(
+                    "UPDATE users SET travel_target=$1, travel_path=$2, travel_start=NOW() WHERE discord_id=$3",
+                    next_node, remaining, str(interaction.user.id),
+                )
 
-            route_str = " → ".join(path_names)
-            cur_name = await db.fetchval("SELECT name FROM map_nodes WHERE id=$1", current)
+                route_str = " → ".join(path_names)
+                cur_name = await db.fetchval("SELECT name FROM map_nodes WHERE id=$1", current)
 
-        await interaction.followup.send(
-            f"🚶 **{cur_name}** → **{route_str}**\n"
-            f"下一步：**{path_names[0]}**（{travel_secs} 秒）"
-        )
+                await interaction.followup.send(
+                    f"🚶 **{cur_name}** → **{route_str}**\n"
+                    f"下一步：**{path_names[0]}**（{travel_secs} 秒）"
+                )
+            except Exception as e:
+                await interaction.followup.send(f"🔴 移動失敗：{e}", ephemeral=True)
+                import traceback
+                traceback.print_exc()
 
     @app_commands.command(name="travel_status", description="查看當前移動狀態或抵達")
     async def travel_status(self, interaction: discord.Interaction):
