@@ -164,6 +164,16 @@ class UtopiaBot1(commands.Bot):
                 "UPDATE users SET travel_target=NULL, travel_start=NULL, travel_path=NULL WHERE discord_id=$1",
                 user_id,
             )
+            if target_node:
+                guild = self.get_guild(921725752796393483)
+                if guild:
+                    member = guild.get_member(int(user_id))
+                    if member:
+                        try:
+                            await member.send(f"✅ 已抵達 **{target_node['name']}**！")
+                        except:
+                            pass
+
             if target_node and target_node["node_type"] == "temple":
                 last_pray = user.get("last_pray_date")
                 muted = user.get("incense_muted_today")

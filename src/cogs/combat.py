@@ -501,9 +501,8 @@ class Combat(commands.Cog):
                 next_node, remaining, str(interaction.user.id),
             )
 
-        route_str = " → ".join(path_names)
-        cur_name = await db.fetchval("SELECT name FROM map_nodes WHERE id=$1", current)
-        travel_secs = next_edge["base_distance"] * (await game_params.move_seconds_per_distance or 30)
+            route_str = " → ".join(path_names)
+            cur_name = await db.fetchval("SELECT name FROM map_nodes WHERE id=$1", current)
 
         await interaction.followup.send(
             f"🚶 **{cur_name}** → **{route_str}**\n"
