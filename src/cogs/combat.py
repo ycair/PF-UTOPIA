@@ -535,12 +535,13 @@ class Combat(commands.Cog):
             )
 
         route_str = " → ".join(path_names)
+        cur_name = await db.fetchval("SELECT name FROM map_nodes WHERE id=$1", current)
         embed = discord.Embed(
             title="🚶 自動導航",
             description=f"路線：**{route_str}**",
             color=discord.Color.teal(),
         )
-        embed.add_field(name="📍 目前位置", value=interaction.channel.name, inline=True)
+        embed.add_field(name="📍 目前位置", value=cur_name or "未知", inline=True)
         embed.add_field(name="⏱️ 下一步", value=f"**{path_names[0]}**（{travel_secs} 秒）", inline=True)
         eta_str = eta.strftime('%H:%M:%S')
         embed.set_footer(text=f"預計抵達 {eta_str} | 奔跑 +50% 速度 5秒 / 冷卻 15秒")
