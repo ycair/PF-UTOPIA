@@ -320,7 +320,7 @@ def user_embed_fields(user):
     return [
         ("狀態",
          f"能力評分：**{score}** 分\n"
-         f"體力：`[{user['stamina']}pt]` {int(pct)}\n"
+         f"體力：`[{user['stamina']}pt]` {pct:.1f}%\n"
          f"最大體力：{user['max_stamina']} 點\n"
          f"元神：{user['yuan_shen']} 點\n"
          f"修為：{user['xiu_wei']} 點"),
