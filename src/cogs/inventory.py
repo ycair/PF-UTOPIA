@@ -54,8 +54,8 @@ class Inventory(commands.Cog):
     @app_commands.command(name="use", description="使用消耗品道具")
     @app_commands.describe(item_name="要使用的道具名稱")
     @app_commands.choices(item_name=[
-        app_commands.Choice(name="體力恢復劑 (+50體力)", value="體力恢復劑"),
-        app_commands.Choice(name="強效體力恢復劑 (+150體力)", value="強效體力恢復劑"),
+        app_commands.Choice(name="體力恢復劑 (+50體力 +50HP)", value="體力恢復劑"),
+        app_commands.Choice(name="強效體力恢復劑 (+150體力 +150HP)", value="強效體力恢復劑"),
         app_commands.Choice(name="線香 (膜拜用)", value="線香"),
         app_commands.Choice(name="糖果 (供奉精靈用)", value="糖果"),
         app_commands.Choice(name="轉法輪 (增加修為)", value="轉法輪"),
@@ -95,16 +95,18 @@ class Inventory(commands.Cog):
             effect_msg = ""
             if item_name == "體力恢復劑":
                 await db.execute(
-                    "UPDATE users SET stamina=LEAST(stamina+50, max_stamina) WHERE discord_id=$1",
+                    "UPDATE users SET stamina=LEAST(stamina+50, max_stamina), "
+                    "current_hp=LEAST(current_hp+50, hp) WHERE discord_id=$1",
                     str(interaction.user.id),
                 )
-                effect_msg = "體力 +50！"
+                effect_msg = "體力 +50、HP +50！"
             elif item_name == "強效體力恢復劑":
                 await db.execute(
-                    "UPDATE users SET stamina=LEAST(stamina+150, max_stamina) WHERE discord_id=$1",
+                    "UPDATE users SET stamina=LEAST(stamina+150, max_stamina), "
+                    "current_hp=LEAST(current_hp+150, hp) WHERE discord_id=$1",
                     str(interaction.user.id),
                 )
-                effect_msg = "體力 +150！"
+                effect_msg = "體力 +150、HP +150！"
             elif item_name == "線香":
                 await db.execute(
                     "UPDATE users SET xian_xiang=xian_xiang+1 WHERE discord_id=$1",
