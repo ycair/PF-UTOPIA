@@ -15,6 +15,42 @@ from src.database import get_pool, init_db, seed_data, update_stock_prices, upda
 from src.bmc_webhook import create_bmc_app
 
 
+class IncenseView(discord.ui.View):
+    def __init__(self, user_id, temple_name, timeout=120):
+        super().__init__(timeout=timeout)
+        self.user_id = user_id
+        self.temple_name = temple_name
+
+    @discord.ui.button(label="🕯️ 領取 3 柱香", style=discord.ButtonStyle.green)
+    async def collect(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if str(interaction.user.id) != str(self.user_id):
+            await interaction.response.send_message("這不是你的面板。", ephemeral=True)
+            return
+        pool = await get_pool()
+        async with pool.acquire() as db:
+            today = datetime.now(timezone(timedelta(hours=8))).date()
+            await db.execute(
+                "UPDATE users SET daily_incense=3, last_pray_date=$1 WHERE discord_id=$2",
+                today, str(self.user_id),
+            )
+        button.disabled = True
+        button.label = "✅ 已領取"
+        embed = interaction.message.embeds[0]
+        embed.description = f"**{self.temple_name}**\n✅ 已領取 3 柱香！使用 `/pray` 膜拜吧。"
+        embed.set_footer(text="🛡️ 鬼王庇佑")
+        await interaction.response.edit_message(embed=embed, view=self)
+
+    @discord.ui.button(label="❌ 不需要", style=discord.ButtonStyle.grey)
+    async def skip(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if str(interaction.user.id) != str(self.user_id):
+            await interaction.response.send_message("這不是你的面板。", ephemeral=True)
+            return
+        embed = interaction.message.embeds[0]
+        embed.description = f"**{self.temple_name}**"
+        embed.set_footer(text="🛡️ 鬼王庇佑")
+        await interaction.response.edit_message(embed=embed, view=None)
+
+
 class UtopiaBot1(commands.Bot):
     def __init__(self):
         intents = discord.Intents.default()
@@ -178,8 +214,21 @@ class UtopiaBot1(commands.Bot):
                     msg = await channel.fetch_message(int(user["travel_message_id"]))
                     embed = discord.Embed(title="✅ 已抵達！", description=f"**{target_name}**", color=discord.Color.green())
                     heal_text = ""
+
+                    if target_node and target_node["node_type"] == "temple":
+                        last_pray = user.get("last_pray_date")
+                        today_tz = datetime.now(tz).date()
+                        if not last_pray or last_pray != today_tz:
+                            view = IncenseView(user_id, target_name)
+                            embed.description = f"**{target_name}**\n🕯️ 大士爺慈悲，是否領取今日 3 柱香？"
+                            embed.set_footer(text="鬼王庇佑之地")
+                            await msg.edit(embed=embed, view=view)
+                            return
+                        else:
+                            heal_text = "\n🛡️ 鬼王庇佑：今日已領取香火"
+
                     if target_node and target_node["is_safe"] and target_node["node_type"] == "capital":
-                        heal_text = "\n❤️ 主城保護：血量已恢復"
+                        heal_text += "\n❤️ 主城保護：血量已恢復"
                     embed.set_footer(text=f"旅程結束{heal_text}")
                     await msg.edit(embed=embed, view=None)
             except:
