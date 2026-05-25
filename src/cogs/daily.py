@@ -19,8 +19,7 @@ class Daily(commands.Cog):
             return
         base_an_bi = await game_params.daily_base_an_bi or 100
         streak_bonus = await game_params.daily_streak_bonus or 20
-        gold_yi_bi = await game_params.gold_card_yi_bi or 20
-        diamond_yi_bi = await game_params.diamond_card_yi_bi or 50
+        daily_max = await game_params.daily_max_an_bi or 250
         pool = await get_pool()
         async with pool.acquire() as db:
             user = await get_user(db, interaction.user.id)
@@ -48,7 +47,7 @@ class Daily(commands.Cog):
             else:
                 streak = 1
 
-            an_bi_reward = base_an_bi + (streak - 1) * streak_bonus
+            an_bi_reward = min(base_an_bi + (streak - 1) * streak_bonus, daily_max)
             yi_bi_reward = 0
             card_info = ""
 

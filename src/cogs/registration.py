@@ -5,6 +5,8 @@ from discord import app_commands
 from src.database import get_pool, get_user, create_user, user_embed_fields
 from src.channel_guard import require_channel
 
+MAIN_CITY = "烏托邦主城"
+
 
 class Registration(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -23,6 +25,12 @@ class Registration(commands.Cog):
                 )
                 return
             user = await create_user(db, interaction.user.id, interaction.user.display_name)
+            main = await db.fetchrow("SELECT id FROM map_nodes WHERE name=$1", MAIN_CITY)
+            if main:
+                await db.execute(
+                    "UPDATE users SET current_node=$1 WHERE discord_id=$2",
+                    main["id"], str(interaction.user.id),
+                )
 
         embed = discord.Embed(
             title="🎉 註冊成功！歡迎來到安逸烏托邦",
