@@ -466,6 +466,8 @@ class Combat(commands.Cog):
                 await interaction.response.send_message(f"🔴 你已經在 {target} 了！", ephemeral=True)
                 return
 
+            await interaction.response.defer()
+
             edge = await db.fetchrow(
                 "SELECT * FROM map_edges WHERE (from_node=$1 AND to_node=$2) OR (from_node=$2 AND to_node=$1)",
                 current, target_node["id"],
@@ -476,7 +478,7 @@ class Combat(commands.Cog):
             else:
                 path_ids = await _find_path(db, current, target_node["id"])
                 if not path_ids:
-                    await interaction.response.send_message("🔴 無法抵達此節點。", ephemeral=True)
+                    await interaction.followup.send("🔴 無法抵達此節點。", ephemeral=True)
                     return
 
             secs_per = await game_params.move_seconds_per_distance or 30
@@ -502,14 +504,8 @@ class Combat(commands.Cog):
         route_str = " → ".join(path_names)
         cur_name = await db.fetchval("SELECT name FROM map_nodes WHERE id=$1", current)
         travel_secs = next_edge["base_distance"] * (await game_params.move_seconds_per_distance or 30)
-        eta = datetime.now(TZ) + timedelta(seconds=travel_secs)
 
-        await db.execute(
-            "UPDATE users SET travel_target=$1, travel_path=$2, travel_start=NOW() WHERE discord_id=$3",
-            next_node, remaining, str(interaction.user.id),
-        )
-
-        await interaction.response.send_message(
+        await interaction.followup.send(
             f"🚶 **{cur_name}** → **{route_str}**\n"
             f"下一步：**{path_names[0]}**（{travel_secs} 秒）"
         )
