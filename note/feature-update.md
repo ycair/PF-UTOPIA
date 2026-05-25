@@ -224,10 +224,11 @@ web/
 │   ├── oauth.js      # Discord OAuth 彈窗流程
 │   ├── api.js        # fetch() 封裝 + JWT 自動附加
 │   ├── dashboard.js  # 主看板（角色卡 + 背包 + 成就）
+│   ├── map.js        # 像素世界地圖（首頁）— Canvas 渲染節點+邊
 │   ├── charts.js     # Chart.js 折線圖（股票歷史）
 │   └── router.js     # 簡單的 hash-based SPA router
 └── assets/
-    └── sprites/      # 像素 PNG（角色/道具/背景）
+    └── sprites/      # 像素 PNG（節點 icon/角色/道具）
 ```
 
 ### JWT Session 表（唯一新增）
@@ -244,11 +245,15 @@ CREATE TABLE user_sessions (
 
 ### 像素風格實作細節
 
+- **首頁即世界地圖**：玩家登入後直接看到像素風 PF UTOPIA 全圖，節點可點擊查看該地區物價、治安、活躍玩家
 - Canvas 渲染時故意降低解析度（例：400×300 → 繪製後 scale 2x）
 - CSS `image-rendering: pixelated; image-rendering: crisp-edges;`
 - 色盤限制 16 色（NES palette）
 - 字型：壓縮像素字體（如 Press Start 2P，Google Fonts 免費）
 - Discord 頭像用 Canvas 降解析度重繪為 pixel art
+- 節點用不同 emoji/sprite 區分類型（🏰 capital / 🌱 wild / ⛪ sanctuary / 💣 arena / 😈 dungeon）
+- 道路用像素虛線連接，危險路段紅色閃爍
+- 玩家所在節點用發光邊框標示，移動中的玩家顯示沿道路移動的像素小人
 
 ---
 
@@ -288,7 +293,7 @@ CREATE TABLE user_sessions (
 CREATE TABLE map_nodes (
     id              SERIAL PRIMARY KEY,
     name            TEXT NOT NULL,
-    node_type       TEXT NOT NULL CHECK (node_type IN ('town','dungeon','mine','wild','ruins')),
+    node_type       TEXT NOT NULL CHECK (node_type IN ('capital','town','wild','dungeon','sanctuary','arena')),
     faction         TEXT DEFAULT 'neutral',
     security        INTEGER DEFAULT 50 CHECK (security BETWEEN 0 AND 100),
     description     TEXT DEFAULT '',
@@ -333,6 +338,14 @@ CREATE TABLE node_prices (
 ALTER TABLE users ADD COLUMN current_node INTEGER REFERENCES map_nodes;
 ALTER TABLE users ADD COLUMN travel_target INTEGER REFERENCES map_nodes;
 ALTER TABLE users ADD COLUMN travel_start TIMESTAMPTZ;
+
+-- 玩家已探索節點（戰爭迷霧）
+CREATE TABLE user_explored (
+    user_id         TEXT REFERENCES users ON DELETE CASCADE,
+    node_id         INTEGER REFERENCES map_nodes ON DELETE CASCADE,
+    explored_at     TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (user_id, node_id)
+);
 ```
 
 ### 供需定價演算法實作
@@ -397,31 +410,63 @@ async def update_node_price(db, node_id, item_id):
   GM 可 tool_call: spawn_enemy / modify_currency / give_item
 ```
 
-### 種子地圖設計（約 12 節點）
+### 種子地圖設計 — PF UTOPIA 世界（13 節點）
+
+沿用原始拓撲，節點名稱統一為安逸烏托邦世界觀：
 
 ```
-                    [翡翠森林]────[古老遺跡]
+                    [翡翠森林]────[世界魔皇巢穴]
                     /    |    \
-         [礦山鎮]─[初始草原]──[貿易港]
+        [搗蛋精靈之森]─[初始草原]──[女僕教堂]
             |         |          |
-         [熔岩洞]  [烏托邦城]──[沿海燈塔]
+        [大士爺廟] [🏰烏托邦主城]──[競技場]
             |         |          |
-         [龍巢]   [南方沼澤]──[海妖灣]
+        [寵物天堂]  [彩券中心]──[沿海小徑]
+                        |
+                   [投資交易所]
 ```
 
-| 節點 | 類型 | 治安 | 特色物資 |
-|------|------|------|---------|
-| 烏托邦城 | town | 80 | 起始點，所有物資基礎價 |
-| 初始草原 | wild | 60 | 黏液、羊毛（盛產） |
-| 礦山鎮 | town | 55 | 魔石、骨頭（盛產） |
-| 貿易港 | town | 70 | 所有進口物資價格低 |
-| 翡翠森林 | wild | 40 | 毒液、皮革、緞帶 |
-| 古老遺跡 | ruins | 20 | 緞帶、轉法輪（稀有） |
-| 熔岩洞 | dungeon | 10 | 魔石（大量）、高危險 |
-| 龍巢 | dungeon | 5 | 傳說材料，終局區域 |
-| 南方沼澤 | wild | 35 | 毒液、骨頭 |
-| 沿海燈塔 | town | 65 | 魚獲、航海物資 |
-| 海妖灣 | wild | 30 | 緞帶、毒液 |
+| 節點 | 類型 | 治安 | 對應原始系統 | 特色物資 | 怪物 |
+|------|------|------|------------|---------|------|
+| 🏰 烏托邦主城 | capital | 90 | 起點、商店、簽到 | 全物資基礎價 | — |
+| 🌱 初始草原 | wild | 60 | `/explore` 草原 | 黏液、羊毛（盛產） | 史萊姆、野雞、兔兔、綿羊、鹿、狼、野豬 |
+| 🌲 翡翠森林 | wild | 30 | `/explore` 森林 | 皮革、魔石、緞帶（稀有） | 猴子、蛇、哥布林、大蜥蜴、食人魔 |
+| 🌊 沿海小徑 | wild | 35 | `/explore` 沿海 | 骨頭、魔石、毒液、緞帶 | 巨蟹、海妖 |
+| 😈 世界魔皇巢穴 | dungeon | 5 | `/world_boss` | 緞帶、魔石（大量）、轉法輪 | 彩虹羊（HP 600K） |
+| ⛪ 女僕教堂 | sanctuary | 85 | `/pray` `/meditate` | 線香（盛產）、轉法輪 | — |
+| 💣 競技場 | arena | 70 | `/arena` | 骨頭、皮革 | 其他玩家 |
+| 🍬 搗蛋精靈之森 | wild | 40 | 精靈供奉 | 糖果、毒液 | 搗蛋精靈（初/中/高） |
+| 🎟 彩券中心 | town | 80 | `/lottery_*` | — | — |
+| 📊 投資交易所 | town | 75 | `/market` `/invest_*` | — | — |
+| 🏯 大士爺廟 | sanctuary | 80 | 節慶活動 | 糖果、轉法輪 | — |
+| 🥏 寵物天堂 | wild | 50 | `/pet_battle` | 寵物 EXP | 野生寵物 |
+
+### 玩家視角差異化
+
+同一張地圖，每位玩家看到的不同：
+
+| 機制 | 說明 |
+|------|------|
+| **戰爭迷霧** | 未到訪的節點呈灰色 `???`，抵達後解鎖 |
+| **當前位置** | 玩家所在節點像素發光邊框，其他節點可看到同區域玩家數量 |
+| **個人標記** | 進行中的任務目標節點顯示 `!` 驚嘆號 |
+| **聲望著色** | 根據該玩家對各節點陣營的聲望，邊框顏色變化（綠=友好、紅=敵對） |
+| **已知物價** | 僅顯示已解鎖節點的物資價格，未解鎖節點不揭露 |
+| **移動中** | 正在移動的玩家顯示像素小人沿道路移動，其他玩家可看到「路上有人」但不知是誰 |
+
+### 地圖 API 端點（player-specific）
+
+```
+GET /api/map
+  → 回傳該玩家視角的完整地圖 JSON：
+    {
+      nodes: [{id, name, type, unlocked, current_players, security, quest_marker}],
+      edges: [{from, to, distance, danger, traveled}],
+      my_position: {node_id, traveling: {target, eta}}
+    }
+```
+
+> 節點數量：初始 13 個，AI GM 可動態擴充（節慶活動、新區域開放）。
 
 ---
 
