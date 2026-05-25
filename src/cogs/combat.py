@@ -74,6 +74,29 @@ async def _get_node_debuff(db, user_id, stat="def"):
     return 1.0
 
 
+async def _find_path(db, start_id, end_id):
+    from collections import deque
+    edges = await db.fetch("SELECT from_node, to_node FROM map_edges")
+    graph = {}
+    for e in edges:
+        graph.setdefault(e["from_node"], []).append(e["to_node"])
+        graph.setdefault(e["to_node"], []).append(e["from_node"])
+    if start_id not in graph or end_id not in graph:
+        return None
+    queue = deque([[start_id]])
+    visited = {start_id}
+    while queue:
+        path = queue.popleft()
+        node = path[-1]
+        if node == end_id:
+            return path
+        for neighbor in graph.get(node, []):
+            if neighbor not in visited:
+                visited.add(neighbor)
+                queue.append(path + [neighbor])
+    return None
+
+
 def _roll_drops(drop_table):
     items = {}
     for item_name, qty_min, qty_max, chance in drop_table:
@@ -447,22 +470,39 @@ class Combat(commands.Cog):
                 "SELECT * FROM map_edges WHERE (from_node=$1 AND to_node=$2) OR (from_node=$2 AND to_node=$1)",
                 current, target_node["id"],
             )
-            if not edge:
-                await interaction.response.send_message("🔴 此節點不與你當前位置相鄰。", ephemeral=True)
-                return
+
+            if edge:
+                path_ids = [current, target_node["id"]]
+            else:
+                path_ids = await _find_path(db, current, target_node["id"])
+                if not path_ids:
+                    await interaction.response.send_message("🔴 無法抵達此節點。", ephemeral=True)
+                    return
 
             secs_per = await game_params.move_seconds_per_distance or 30
-            travel_secs = edge["base_distance"] * secs_per
+            next_node = path_ids[1]
+            next_edge = await db.fetchrow(
+                "SELECT * FROM map_edges WHERE (from_node=$1 AND to_node=$2) OR (from_node=$2 AND to_node=$1)",
+                current, next_node,
+            )
+            travel_secs = next_edge["base_distance"] * secs_per
             eta = datetime.now(TZ) + timedelta(seconds=travel_secs)
+            remaining = path_ids[2:] if len(path_ids) > 2 else []
+
+            path_names = []
+            for pid in path_ids[1:]:
+                n = await db.fetchrow("SELECT name FROM map_nodes WHERE id=$1", pid)
+                path_names.append(n["name"] if n else "?")
 
             await db.execute(
-                "UPDATE users SET travel_target=$1, travel_start=NOW() WHERE discord_id=$2",
-                target_node["id"], str(interaction.user.id),
+                "UPDATE users SET travel_target=$1, travel_path=$2, travel_start=NOW() WHERE discord_id=$3",
+                next_node, remaining, str(interaction.user.id),
             )
 
+        route_str = " → ".join(path_names)
         await interaction.response.send_message(
-            f"🚶 開始移動：→ **{target}**\n"
-            f"預計抵達時間：**{eta.strftime('%H:%M:%S')}**（{travel_secs} 秒）"
+            f"🚶 自動導航：**{route_str}**\n"
+            f"下一步 → **{path_names[0]}**（{travel_secs} 秒）"
         )
 
     @app_commands.command(name="travel_status", description="查看當前移動狀態或抵達")
