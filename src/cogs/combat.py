@@ -85,20 +85,29 @@ def _rewards_json(rewards):
     return json.dumps(rewards, ensure_ascii=False) if rewards.get("items") else None
 
 
+NODE_ZONE_MAP = {
+    "初始草原": ["initial_grassland_outer", "initial_grassland_inner"],
+    "翡翠森林": ["jade_forest_outer", "jade_forest_inner"],
+    "沿海小徑": ["coastal_path"],
+    "搗蛋精靈之森": ["spirit_forest"],
+    "寵物天堂": ["pet_heaven"],
+}
+
+
+NODE_BOSS_MAP = {
+    "初始草原": ["zombie"],
+    "翡翠森林": ["army", "maid_ribbon"],
+    "沿海小徑": ["army"],
+    "世界魔皇巢穴": ["maid_ribbons"],
+}
+
+
 class Combat(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    @app_commands.command(name="explore", description="探索野區，消耗體力與怪物戰鬥")
-    @app_commands.describe(zone="選擇探索區域")
-    @app_commands.choices(zone=[
-        app_commands.Choice(name="初始草原外圍 (8體)", value="initial_grassland_outer"),
-        app_commands.Choice(name="初始草原內部 (10體)", value="initial_grassland_inner"),
-        app_commands.Choice(name="翡翠森林外圍 (12體)", value="jade_forest_outer"),
-        app_commands.Choice(name="翡翠森林內部 (15體)", value="jade_forest_inner"),
-        app_commands.Choice(name="沿海小徑 (14體)", value="coastal_path"),
-    ])
-    async def explore(self, interaction: discord.Interaction, zone: str):
+    @app_commands.command(name="explore", description="探索你所在節點的野區，消耗體力與怪物戰鬥")
+    async def explore(self, interaction: discord.Interaction):
         if not await require_channel(interaction, "explore"):
             return
         pool = await get_pool()
@@ -110,9 +119,20 @@ class Combat(commands.Cog):
             if not await _require_outside_city(interaction, user):
                 return
 
-            zone_data = await combat_zones.get(zone)
+            node = await db.fetchrow("SELECT name FROM map_nodes WHERE id=$1", user["current_node"])
+            if not node:
+                await interaction.response.send_message("🔴 所在節點無法探索。", ephemeral=True)
+                return
+
+            zone_keys = NODE_ZONE_MAP.get(node["name"])
+            if not zone_keys:
+                await interaction.response.send_message(f"🔴 **{node['name']}** 無法探索戰鬥。", ephemeral=True)
+                return
+
+            zone_key = random.choice(zone_keys)
+            zone_data = await combat_zones.get(zone_key)
             if not zone_data:
-                await interaction.response.send_message("🔴 未知區域。", ephemeral=True)
+                await interaction.response.send_message("🔴 此區域暫無怪物資料。", ephemeral=True)
                 return
 
             stamina_cost = zone_data["stamina"]
@@ -196,15 +216,8 @@ class Combat(commands.Cog):
         embed.set_footer(text=f"剩餘體力：{user['stamina'] - stamina_cost} 點 | HP：{max(0, round(u_hp, 1))}/{user['hp']}")
         await interaction.response.send_message(embed=embed)
 
-    @app_commands.command(name="dungeon", description="挑戰副本 Boss")
-    @app_commands.describe(boss="選擇 Boss")
-    @app_commands.choices(boss=[
-        app_commands.Choice(name="征服入侵殭屍", value="zombie"),
-        app_commands.Choice(name="征服入侵軍團", value="army"),
-        app_commands.Choice(name="解開女僕的緞帶", value="maid_ribbon"),
-        app_commands.Choice(name="解開女僕們的緞帶", value="maid_ribbons"),
-    ])
-    async def dungeon(self, interaction: discord.Interaction, boss: str):
+    @app_commands.command(name="dungeon", description="挑戰你所在節點的副本 Boss")
+    async def dungeon(self, interaction: discord.Interaction):
         if not await require_channel(interaction, "dungeon"):
             return
         pool = await get_pool()
@@ -216,9 +229,17 @@ class Combat(commands.Cog):
             if not await _require_outside_city(interaction, user):
                 return
 
+            node = await db.fetchrow("SELECT name FROM map_nodes WHERE id=$1", user["current_node"])
+            boss_keys = NODE_BOSS_MAP.get(node["name"], []) if node else []
+            if not boss_keys:
+                await interaction.response.send_message(
+                    f"🔴 **{node['name']}** 沒有可挑戰的 Boss。", ephemeral=True
+                )
+                return
+            boss = random.choice(boss_keys)
             boss_data = await dungeon_bosses.get(boss)
             if not boss_data:
-                await interaction.response.send_message("🔴 未知 Boss。", ephemeral=True)
+                await interaction.response.send_message("🔴 Boss 資料異常。", ephemeral=True)
                 return
 
             score = user["attack"] * 100 + user["defense"] * 50 + user["hp"] * 10

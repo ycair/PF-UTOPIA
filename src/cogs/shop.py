@@ -4,6 +4,41 @@ from discord import app_commands
 
 from src.database import get_pool, get_user
 from src.channel_guard import require_channel
+from src.hotconfig import combat_zones
+
+ZONE_ITEM_MAP = {}
+
+
+async def _get_sell_price(db, user_id, item_id):
+    user = await db.fetchrow(
+        "SELECT current_node FROM users WHERE discord_id=$1", str(user_id)
+    )
+    node_id = user["current_node"] if user else None
+    if not node_id:
+        return None, "flat", "未知位置"
+
+    node = await db.fetchrow("SELECT name, node_type, is_safe FROM map_nodes WHERE id=$1", node_id)
+    price_row = await db.fetchrow(
+        "SELECT current_price, direction FROM node_prices WHERE node_id=$1 AND item_id=$2",
+        node_id, item_id,
+    )
+    if price_row:
+        return price_row["current_price"], price_row["direction"], node["name"]
+
+    if node["is_safe"]:
+        price_row = await db.fetchrow(
+            "SELECT current_price, direction FROM node_prices WHERE node_id=1 AND item_id=$2"
+        )
+        if price_row:
+            return price_row["current_price"], price_row["direction"], node["name"]
+
+    main_price = await db.fetchval(
+        "SELECT current_price FROM node_prices WHERE node_id=1 AND item_id=$1", item_id
+    )
+    if main_price:
+        return int(main_price * 0.3), "flat", node["name"]
+
+    return None, "flat", node["name"]
 
 
 class Shop(commands.Cog):
@@ -131,11 +166,10 @@ class Shop(commands.Cog):
                 )
                 return
 
-            price_row = await db.fetchrow(
-                "SELECT current_price, direction FROM shop_sell_prices WHERE item_id=$1", item["id"],
-            )
-            sell_price = price_row["current_price"] if price_row else item["base_price"]
-            direction = price_row["direction"] if price_row else "flat"
+            sell_price, direction, location = await _get_sell_price(db, interaction.user.id, item["id"])
+            if sell_price is None:
+                await interaction.response.send_message(f"🔴 **{location}** 不收購此道具。")
+                return
 
             total_tuo_bi = sell_price * quantity
             await db.execute(
@@ -154,7 +188,8 @@ class Shop(commands.Cog):
         dir_icon = {"up": "🔺", "down": "🔻", "flat": "➖"}.get(direction, "➖")
         await interaction.response.send_message(
             f"✅ 出售成功！{item['emoji']} **{item_name}** ×{quantity}\n"
-            f"　{dir_icon} 單價 {sell_price:,} 托幣 | 合計 💴 +{total_tuo_bi:,} 托幣"
+            f"　{dir_icon} 單價 {sell_price:,} 托幣 | 合計 💴 +{total_tuo_bi:,} 托幣\n"
+            f"　📍 於 **{location}**"
         )
 
     @app_commands.command(name="shop_price", description="查詢材料當前賣價（不賣出）")
@@ -180,14 +215,14 @@ class Shop(commands.Cog):
             if not item:
                 await interaction.response.send_message("🔴 此道具無法出售。", ephemeral=True)
                 return
-            price_row = await db.fetchrow(
-                "SELECT current_price, direction FROM shop_sell_prices WHERE item_id=$1", item["id"],
-            )
-            sell_price = price_row["current_price"] if price_row else item["base_price"]
-            direction = price_row["direction"] if price_row else "flat"
+            sell_price, direction, location = await _get_sell_price(db, interaction.user.id, item["id"])
+            if sell_price is None:
+                await interaction.response.send_message(f"🔴 **{location}** 不收購此道具。")
+                return
         dir_icon = {"up": "🔺", "down": "🔻", "flat": "➖"}.get(direction, "➖")
         await interaction.response.send_message(
-            f"{item['emoji']} **{item_name}**  {dir_icon} 當前賣價 **{sell_price:,}** 托幣"
+            f"{item['emoji']} **{item_name}**  {dir_icon} 賣價 **{sell_price:,}** 托幣\n"
+            f"📍 於 **{location}**"
         )
 
 
