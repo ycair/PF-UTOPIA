@@ -89,7 +89,7 @@ class UtopiaBot1(commands.Bot):
             return
         await self.process_commands(message)
 
-    @tasks.loop(seconds=15)
+    @tasks.loop(seconds=3)
     async def travel_check_loop(self):
         TZ_LOOP = timezone(timedelta(hours=8))
         pool = await get_pool()
@@ -131,7 +131,7 @@ class UtopiaBot1(commands.Bot):
         arrived = (now - start).total_seconds() >= secs
 
         remaining = max(0, int(secs - (now - start).total_seconds()))
-        sprint_active = sprint_until and sprint_until.tzinfo is None and sprint_until > now if sprint_until else False
+        sprint_active = sprint_until and sprint_until > now
 
         if not arrived:
             cur_name = await db.fetchval("SELECT name FROM map_nodes WHERE id=$1", user["current_node"])
@@ -149,10 +149,10 @@ class UtopiaBot1(commands.Bot):
                     msg = await channel.fetch_message(int(user["travel_message_id"]))
                     embed = discord.Embed(title="🚶 自動導航", color=discord.Color.teal())
                     embed.add_field(name="📍 目前位置", value=cur_name or "?", inline=True)
-                    embed.add_field(name="⏱️ 剩餘", value=f"{remaining} 秒 → **{target_name or '?'}**", inline=True)
+                    sprint_note = " ⚡×1.5" if sprint_active else ""
+                    embed.add_field(name=f"⏱️ 剩餘{sprint_note}", value=f"**{remaining}** 秒 → {target_name or '?'}", inline=True)
                     embed.add_field(name="🗺️ 路線", value=f"**{route}**", inline=False)
-                    sprint_tag = "⚡ 奔跑中！" if sprint_active else ""
-                    embed.set_footer(text=sprint_tag or "移動中...")
+                    embed.set_footer(text="⚡ 奔跑加速中！" if sprint_active else "移動中...")
                     await msg.edit(embed=embed)
             except:
                 pass
