@@ -50,8 +50,8 @@ class Shop(commands.Cog):
     @app_commands.command(name="shop_buy", description="購買消耗品（使用托幣）")
     @app_commands.describe(item_name="要購買的道具", quantity="購買數量")
     @app_commands.choices(item_name=[
-        app_commands.Choice(name="體力恢復劑 100托幣", value="體力恢復劑"),
-        app_commands.Choice(name="強效體力恢復劑 300托幣", value="強效體力恢復劑"),
+        app_commands.Choice(name="恢復劑 100托幣", value="恢復劑"),
+        app_commands.Choice(name="強效恢復劑 300托幣", value="強效恢復劑"),
         app_commands.Choice(name="線香 50托幣", value="線香"),
         app_commands.Choice(name="糖果 30托幣", value="糖果"),
         app_commands.Choice(name="轉法輪 500托幣", value="轉法輪"),
