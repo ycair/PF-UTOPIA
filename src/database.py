@@ -307,12 +307,6 @@ def compute_ability_score(atk, df, hp):
     return atk * 100 + df * 50 + hp * 10
 
 
-def format_stamina_bar(current, maximum):
-    pct = current / max(maximum, 1) * 100
-    filled = int(pct / 5)
-    return "█" * filled + "░" * (20 - filled), pct
-
-
 def format_exp_bar(current, next_level):
     pct = current / max(next_level, 1) * 100
     filled = int(pct / 5)
@@ -321,12 +315,12 @@ def format_exp_bar(current, next_level):
 
 def user_embed_fields(user):
     score = compute_ability_score(user["attack"], user["defense"], user["hp"])
-    bar, pct = format_stamina_bar(user["stamina"], user["max_stamina"])
+    pct = user["stamina"] / max(user["max_stamina"], 1) * 100
     exp_bar, exp_pct = format_exp_bar(user["chat_exp"], user["chat_exp_next"])
     return [
         ("狀態",
          f"能力評分：**{score}** 分\n"
-         f"體力：`[{user['stamina']}pt]` {bar} {pct:.1f}%\n"
+         f"體力：`[{user['stamina']}pt]` {int(pct)}\n"
          f"最大體力：{user['max_stamina']} 點\n"
          f"元神：{user['yuan_shen']} 點\n"
          f"修為：{user['xiu_wei']} 點"),

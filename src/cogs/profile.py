@@ -44,11 +44,9 @@ class Profile(commands.Cog):
         current_hp = u.get("current_hp")
         max_hp = u["hp"]
         if current_hp is not None:
-            hp_pct = max(0, current_hp / max(max_hp, 1) * 100)
-            hp_bar = "❤️" * int(hp_pct / 10) + "🖤" * (10 - int(hp_pct / 10))
             embed.add_field(
                 name=f"❤️ 血量",
-                value=f"{hp_bar}\n{max(0, current_hp):.0f} / {max_hp}",
+                value=f"{max(0, current_hp):.0f}/{max_hp}",
                 inline=True,
             )
 
