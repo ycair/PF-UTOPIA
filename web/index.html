@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PF UTOPIA — 安逸烏托邦 世界地圖</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="app">
+  <div id="map-container">
+    <canvas id="map-canvas"></canvas>
+    <div id="node-tooltip" class="hidden"></div>
+  </div>
+
+  <div id="sidebar">
+    <div id="player-card" class="panel">
+      <div class="panel-header">📊 角色狀態</div>
+      <div id="player-info">載入中...</div>
+    </div>
+    <div id="node-info" class="panel hidden">
+      <div class="panel-header" id="node-name">—</div>
+      <div id="node-detail"></div>
+    </div>
+    <div id="legend" class="panel">
+      <div class="panel-header">🗺️ 圖例</div>
+      <div class="legend-item"><span class="dot safe"></span> 安全區</div>
+      <div class="legend-item"><span class="dot wild"></span> 野外</div>
+      <div class="legend-item"><span class="dot dungeon"></span> 副本</div>
+      <div class="legend-item"><span class="dot player-dot"></span> 你的位置</div>
+      <div class="legend-item"><span class="dot fog"></span> 未探索</div>
+    </div>
+  </div>
+</div>
+
+<script src="map.js"></script>
+</body>
+</html>
