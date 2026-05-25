@@ -1,0 +1,12 @@
+{
+  "name": "pf-utopia-web",
+  "version": "1.0.0",
+  "description": "PF UTOPIA - Discord MMORPG Dashboard",
+  "scripts": {
+    "dev": "npx serve web -p 3000",
+    "start": "npx serve web -p 3000"
+  },
+  "devDependencies": {
+    "serve": "^14.2.6"
+  }
+}
