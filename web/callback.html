@@ -1,0 +1,10 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>登入中...</title></head>
+<body style="background:#0a0a0f;color:#c8c8c8;font-family:monospace;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;">
+<div id="msg">🔐 驗證中...</div>
+<script>
+const p=new URLSearchParams(window.location.search);const c=p.get('code');
+if(c){fetch('/api/auth/callback?code='+c).then(r=>r.json()).then(d=>{if(d.token){localStorage.setItem('utopia_token',d.token);window.location.href='/'}else{document.getElementById('msg').textContent='❌ 登入失敗: '+(d.error||'unknown')}}).catch(()=>{document.getElementById('msg').textContent='❌ 連線錯誤'})}
+else{document.getElementById('msg').textContent='❌ 缺少授權碼'}
+</script>
+</body></html>

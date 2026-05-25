@@ -1,40 +1,43 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PF UTOPIA — 安逸烏托邦 世界地圖</title>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PF UTOPIA — 安逸烏托邦</title>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-<div id="app">
-  <div id="map-container">
-    <canvas id="map-canvas"></canvas>
-    <div id="node-tooltip" class="hidden"></div>
+<nav id="top-nav">
+  <span class="nav-brand">PF UTOPIA</span>
+  <div class="nav-tabs">
+    <button class="nav-tab active" data-page="map">🗺️ 地圖</button>
+    <button class="nav-tab" data-page="profile">📊 角色</button>
+    <button class="nav-tab" data-page="market">📈 市場</button>
+    <button class="nav-tab" data-page="ranking">🏆 排行</button>
   </div>
-
-  <div id="sidebar">
-    <div id="player-card" class="panel">
-      <div class="panel-header">📊 角色狀態</div>
-      <div id="player-info">載入中...</div>
+  <button id="login-btn" class="nav-login">🔐 Discord 登入</button>
+  <span id="user-greeting" class="nav-user hidden"></span>
+</nav>
+<div id="app">
+  <div id="page-map" class="page active">
+    <div id="map-container"><canvas id="map-canvas"></canvas><div id="node-tooltip" class="hidden"></div></div>
+  </div>
+  <div id="page-profile" class="page">
+    <div class="content-panel"><div class="panel"><div class="panel-header">📊 角色狀態</div><div id="profile-full">請先登入 Discord</div></div></div>
+  </div>
+  <div id="page-market" class="page">
+    <div class="content-panel">
+      <div class="panel"><div class="panel-header">📈 股市行情</div><div id="market-data">載入中...</div></div>
+      <div class="panel"><div class="panel-header">🏪 物資賣價</div><div id="shop-data">載入中...</div></div>
     </div>
-    <div id="node-info" class="panel hidden">
-      <div class="panel-header" id="node-name">—</div>
-      <div id="node-detail"></div>
-    </div>
-    <div id="legend" class="panel">
-      <div class="panel-header">🗺️ 圖例</div>
-      <div class="legend-item"><span class="dot safe"></span> 安全區</div>
-      <div class="legend-item"><span class="dot wild"></span> 野外</div>
-      <div class="legend-item"><span class="dot dungeon"></span> 副本</div>
-      <div class="legend-item"><span class="dot player-dot"></span> 你的位置</div>
-      <div class="legend-item"><span class="dot fog"></span> 未探索</div>
+  </div>
+  <div id="page-ranking" class="page">
+    <div class="content-panel">
+      <div class="panel"><div class="panel-header">⚔️ 戰力排行</div><div id="rank-power">載入中...</div></div>
+      <div class="panel"><div class="panel-header">🪙 財富排行</div><div id="rank-wealth">載入中...</div></div>
     </div>
   </div>
 </div>
-
 <script src="map.js"></script>
 </body>
 </html>
