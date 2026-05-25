@@ -15,6 +15,63 @@ from src.database import get_pool, init_db, seed_data, update_stock_prices, upda
 from src.bmc_webhook import create_bmc_app
 
 
+class IncenseView(discord.ui.View):
+    def __init__(self, user_id, temple_name):
+        super().__init__(timeout=300)
+        self.user_id = str(user_id)
+        self.temple_name = temple_name
+        self.muted = False
+
+    @discord.ui.button(label="🕯️ 領取 3 柱香", style=discord.ButtonStyle.green)
+    async def collect(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if str(interaction.user.id) != self.user_id:
+            await interaction.response.send_message("這不是你的面板。", ephemeral=True)
+            return
+        today = datetime.now(timezone(timedelta(hours=8))).date()
+        pool = await get_pool()
+        async with pool.acquire() as db:
+            await db.execute(
+                "UPDATE users SET daily_incense=3, last_pray_date=$1 WHERE discord_id=$2",
+                today, self.user_id,
+            )
+        button.disabled = True
+        for child in self.children:
+            child.disabled = True
+        embed = interaction.message.embeds[0]
+        embed.description = f"**{self.temple_name}**\n✅ 已領取 3 柱香！使用 `/pray` 膜拜吧。"
+        await interaction.response.edit_message(embed=embed, view=self)
+
+    @discord.ui.button(label="🙏 不持香參拜", style=discord.ButtonStyle.grey)
+    async def skip(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if str(interaction.user.id) != self.user_id:
+            await interaction.response.send_message("這不是你的面板。", ephemeral=True)
+            return
+        for child in self.children:
+            child.disabled = True
+        embed = interaction.message.embeds[0]
+        embed.description = f"**{self.temple_name}**\n🙏 不持香參拜。隨時可用 `/pray`。"
+        await interaction.response.edit_message(embed=embed, view=self)
+
+    @discord.ui.button(label="☑️ 今天不再詢問", style=discord.ButtonStyle.blurple, row=1)
+    async def mute_today(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if str(interaction.user.id) != self.user_id:
+            await interaction.response.send_message("這不是你的面板。", ephemeral=True)
+            return
+        today = datetime.now(timezone(timedelta(hours=8))).date()
+        pool = await get_pool()
+        async with pool.acquire() as db:
+            await db.execute(
+                "UPDATE users SET incense_muted_today=$1 WHERE discord_id=$2",
+                today, self.user_id,
+            )
+        self.muted = True
+        button.label = "✅ 已設定今天不再詢問"
+        button.disabled = True
+        embed = interaction.message.embeds[0]
+        embed.description += "\n☑️ 今天不再詢問（已設定）"
+        await interaction.response.edit_message(embed=embed, view=self)
+
+
 class UtopiaBot1(commands.Bot):
     def __init__(self):
         intents = discord.Intents.default()
@@ -109,17 +166,24 @@ class UtopiaBot1(commands.Bot):
             )
             if target_node and target_node["node_type"] == "temple":
                 last_pray = user.get("last_pray_date")
+                muted = user.get("incense_muted_today")
                 today_tz = datetime.now(tz).date()
-                if not last_pray or last_pray != today_tz:
+                already_collected = last_pray and last_pray == today_tz
+                muted_today = muted and muted == today_tz
+                if not already_collected and not muted_today:
                     guild = self.get_guild(921725752796393483)
                     if guild:
                         member = guild.get_member(int(user_id))
                         if member:
                             try:
-                                await member.send(
-                                    f"🕯️ 你已抵達 **{target_node['name']}**！使用 `/pray` 膜拜吧。\n"
-                                    f"今日可領取 3 柱香。"
+                                embed = discord.Embed(
+                                    title="🏯 大士爺廟",
+                                    description=f"🕯️ 大士爺慈悲，是否領取今日 3 柱香？",
+                                    color=discord.Color.gold(),
                                 )
+                                embed.set_footer(text="鬼王庇佑之地")
+                                view = IncenseView(user_id, target_node["name"])
+                                await member.send(embed=embed, view=view)
                             except:
                                 pass
 
