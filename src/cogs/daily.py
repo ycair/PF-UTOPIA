@@ -67,6 +67,39 @@ class Daily(commands.Cog):
                 an_bi_reward, yi_bi_reward, streak, today, str(interaction.user.id),
             )
 
+            referral_bonus = 0
+            if streak >= 3:
+                referred_by = user.get("referred_by")
+                rewarded = user.get("referral_rewarded")
+                if referred_by and not rewarded:
+                    await db.execute(
+                        "UPDATE users SET referral_rewarded=TRUE WHERE discord_id=$1",
+                        str(interaction.user.id),
+                    )
+                    await db.execute(
+                        "UPDATE users SET an_bi=an_bi+500 WHERE discord_id=$1",
+                        referred_by,
+                    )
+                    referral_bonus = 500
+                    await db.execute(
+                        "UPDATE users SET an_bi=an_bi+500 WHERE discord_id=$1",
+                        str(interaction.user.id),
+                    )
+                    an_bi_reward += 500
+                    referrer = await db.fetchrow(
+                        "SELECT username FROM users WHERE discord_id=$1", referred_by
+                    )
+                    if referrer:
+                        try:
+                            member = interaction.guild.get_member(int(referred_by))
+                            if member:
+                                await member.send(
+                                    f"🎉 **{user['username']}** 透過你的推薦碼加入了安逸烏托邦，"
+                                    f"並已連續簽到 3 天！\n你獲得 🪙 安幣 +500！"
+                                )
+                        except:
+                            pass
+
             await db.execute(
                 "INSERT INTO signin_logs (user_id, signin_date, streak, reward_an_bi, reward_yi_bi) "
                 "VALUES ($1,$2,$3,$4,$5) ON CONFLICT (user_id, signin_date) DO NOTHING",
@@ -81,6 +114,8 @@ class Daily(commands.Cog):
         if yi_bi_reward > 0:
             embed.add_field(name="月卡獎勵", value=f"💵 逸幣 +{yi_bi_reward} 元 {card_info}", inline=True)
         embed.add_field(name="連續簽到", value=f"🔥 {streak} 天", inline=True)
+        if referral_bonus > 0:
+            embed.add_field(name="🤝 推薦獎勵", value=f"+500 安幣（推薦人同步獲得）", inline=True)
         embed.set_footer(text="每天簽到累積獎勵越多！")
         await interaction.response.send_message(embed=embed)
 
