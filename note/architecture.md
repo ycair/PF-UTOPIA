@@ -996,7 +996,18 @@ YCAIR-DCBOT/
 - Bot ② 號負責經濟 + 活動（7 個 Cog，20+ 指令）
 - Bot ① 的背景任務同時負責兩個 Bot 的價格更新（股票 15min / 賣價 30min）
 - 所有頻道限制透過 `channel_guard.py` 的 `require_channel()` 統一管理
-- 頻道 ID 集中在 `config.py` 的 `CHANNELS` 字典中，方便批次修改
+- 頻道 ID 集中在 `settings.json`，支援熱重載
+
+### 推薦系統
+
+| 參數 | 值 |
+|------|-----|
+| 編碼方式 | Hashids（無狀態，不需儲存推薦碼） |
+| 新玩家獎勵 | 2,500 安幣（`/register code:XXXX` 時立即發放） |
+| 推薦人獎勵 | 500 安幣（新玩家連續簽到第 3 天觸發） |
+| 防弊 | 延遲派發 — 需連續簽到 3 天證明為活躍真人 |
+| 分享頁面 | `/referral.html?code=XXXXXX` |
+| 相關檔案 | `src/referral.py`, `cogs/registration.py`, `cogs/daily.py` |
 
 ## 十三、Buy Me a Coffee 逸幣儲值系統（規劃中）
 
