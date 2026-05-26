@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PF UTOPIA — 好友邀請</title>
+<meta name="description" content="加入 PF UTOPIA 安逸烏托邦，一個運行於 Discord 的文字 MMORPG。使用推薦碼註冊即可獲得 2,500 安幣！">
+<meta name="theme-color" content="#0a0a0f">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0a0a0f;--panel:#111118;--border:#2a2a35;--gold:#c9a84c;--amber:#e8b44f;--teal:#3a8a7a;--text:#c8c8c8;--dim:#888;--primary:#5865F2;--green:#4a8a4a}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:'Press Start 2P',monospace;font-size:10px;line-height:2.2;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:32px 16px}
+.content{max-width:680px;width:100%}
+.hero{text-align:center;margin-bottom:32px}
+.hero h1{color:var(--gold);font-size:13px;margin-bottom:8px}
+.hero .sub{color:var(--teal);font-size:8px}
+
+.code-box{text-align:center;background:var(--panel);border:2px solid var(--gold);padding:24px;margin:24px 0}
+.code-box .label{color:var(--dim);font-size:8px;margin-bottom:8px}
+.code-box .code{color:var(--amber);font-size:28px;letter-spacing:6px}
+.code-box .reward{color:var(--gold);font-size:9px;margin-top:12px}
+
+.section{background:var(--panel);border:1px solid var(--border);padding:16px;margin-bottom:12px}
+.section h2{color:var(--amber);font-size:10px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.section p{color:var(--dim);margin:6px 0;font-size:9px}
+
+.steps{list-style:none;counter-reset:step}
+.steps li{counter-increment:step;padding:10px 0 10px 40px;position:relative;font-size:9px;color:var(--text)}
+.steps li::before{content:"0" counter(step);position:absolute;left:0;top:10px;color:var(--gold);font-size:11px}
+.steps li .cmd{color:var(--amber);background:rgba(201,168,76,0.15);padding:2px 6px;font-size:8px}
+
+.cta{text-align:center;margin:24px 0}
+.cta a{display:inline-block;background:var(--primary);color:#fff;padding:14px 32px;text-decoration:none;font-size:10px}
+.cta a:hover{filter:brightness(1.2)}
+
+.features{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}
+.feature{font-size:8px;color:var(--dim)}
+.feature .icon{font-size:18px;display:block;margin-bottom:2px}
+
+.footer{text-align:center;margin-top:24px;font-size:7px}
+.footer a{color:var(--dim);text-decoration:none;margin:0 6px}
+.footer a:hover{color:var(--gold)}
+
+#no-code{display:none;text-align:center;color:var(--dim);font-size:9px;margin:24px 0}
+</style>
+</head>
+<body>
+<div class="content">
+
+<div class="hero">
+  <h1>PF UTOPIA</h1>
+  <div class="sub">安逸烏托邦 · Discord MMORPG</div>
+</div>
+
+<div id="has-code">
+  <div class="code-box">
+    <div class="label">🎁 你的好友邀請你加入！專屬獎勵</div>
+    <div class="code" id="ref-code">------</div>
+    <div class="reward">🪙 使用此推薦碼註冊即可獲得 <strong>2,500 安幣</strong>！</div>
+  </div>
+
+  <div class="section">
+    <h2>⚔️ 遊戲簡介</h2>
+    <p>14 個節點的圖論世界地圖 · 5 種貨幣經濟 · 4 個副本 Boss · 6 種投資股票 · 寵物抽卡養成 · 離線打坐掛機 · 大士爺廟膜拜加持</p>
+    <div class="features">
+      <div class="feature"><span class="icon">⚔️</span>野外探索打怪</div>
+      <div class="feature"><span class="icon">💰</span>動態商店經濟</div>
+      <div class="feature"><span class="icon">📊</span>烏龜股票投資</div>
+      <div class="feature"><span class="icon">🔆</span>寵物抽卡養成</div>
+      <div class="feature"><span class="icon">🛐</span>離線掛機獎勵</div>
+      <div class="feature"><span class="icon">🙏</span>鬼王膜拜加持</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>📋 領取獎勵步驟</h2>
+    <ol class="steps">
+      <li><div>加入 Discord 伺服器</div></li>
+      <li><div>前往 <span class="cmd">#🚧伺服器註冊</span> 頻道</div></li>
+      <li><div>輸入指令 <span class="cmd" id="reg-cmd">/register code:------</span></div></li>
+      <li><div>🎉 自動獲得 2,500 安幣！</div></li>
+    </ol>
+  </div>
+
+  <div class="cta">
+    <a href="https://discord.gg/WaPkXXQU47">🔗 加入 PF UTOPIA Discord</a>
+  </div>
+</div>
+
+<div id="no-code">
+  <p>好友邀請你加入 PF UTOPIA！</p>
+  <p>使用 <strong>/register code:XXXXXX</strong> 註冊即可獲得 2,500 安幣</p>
+  <div class="cta"><a href="https://discord.gg/WaPkXXQU47">🔗 加入 Discord</a></div>
+</div>
+
+<div class="footer">
+  <a href="/">世界地圖</a> |
+  <a href="/tos.html">服務條款</a> |
+  <a href="/privacy.html">隱私權政策</a>
+</div>
+
+</div>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const code = params.get('code');
+if (code && code.length >= 4) {
+  document.getElementById('ref-code').textContent = code;
+  document.getElementById('reg-cmd').textContent = '/register code:' + code;
+} else {
+  document.getElementById('has-code').style.display = 'none';
+  document.getElementById('no-code').style.display = 'block';
+}
+</script>
+</body>
+</html>

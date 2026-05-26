@@ -41,7 +41,7 @@ class Registration(commands.Cog):
             user = await create_user(db, interaction.user.id, interaction.user.display_name)
             if referrer_id:
                 await db.execute(
-                    "UPDATE users SET referred_by=$1, an_bi=an_bi+100 WHERE discord_id=$2",
+                    "UPDATE users SET referred_by=$1, an_bi=an_bi+2500 WHERE discord_id=$2",
                     str(referrer_id), str(interaction.user.id),
                 )
 
@@ -72,10 +72,12 @@ class Registration(commands.Cog):
                 await interaction.response.send_message("🔴 請先註冊！", ephemeral=True)
                 return
         code = encode_referral(interaction.user.id)
+        url = f"https://utopia.ycair.space/referral.html?code={code}"
         await interaction.response.send_message(
             f"🤝 你的專屬推薦碼：**`{code}`**\n"
-            f"邀請朋友使用 `/register code:{code}` 註冊！\n"
-            f"朋友連續簽到 3 天後，你將獲得 500 安幣獎勵。"
+            f"🔗 分享連結：{url}\n\n"
+            f"新玩家使用 `/register code:{code}` 註冊可獲得 **🪙 2,500 安幣**！\n"
+            f"朋友連續簽到 3 天後，你也會獲得 500 安幣獎勵。"
         )
 
 

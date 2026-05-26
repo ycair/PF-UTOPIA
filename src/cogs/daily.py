@@ -81,11 +81,6 @@ class Daily(commands.Cog):
                         referred_by,
                     )
                     referral_bonus = 500
-                    await db.execute(
-                        "UPDATE users SET an_bi=an_bi+500 WHERE discord_id=$1",
-                        str(interaction.user.id),
-                    )
-                    an_bi_reward += 500
                     referrer = await db.fetchrow(
                         "SELECT username FROM users WHERE discord_id=$1", referred_by
                     )
