@@ -95,119 +95,21 @@ class UtopiaBot1(commands.Bot):
         self.tree.copy_global_to(guild=guild)
         await self.tree.sync(guild=guild)
         self.price_update_loop.start()
-        self.stamina_regen_loop.start()
-        self.travel_check_loop.start()
 
-    async def on_message(self, message: discord.Message):
-        if message.author.bot:
-            return
-        if message.guild is None:
-            await message.channel.send(
-                "👋 你好！這裡是安逸烏托邦女僕的私訊通道。\n"
-                "⚠️ DM 中無法使用任何遊戲指令。\n"
-                f"請回到 <#{GUILD_ID}> 伺服器遊玩～"
-            )
-            return
-        await self.process_commands(message)
-
-    @tasks.loop(seconds=15)
-    async def travel_check_loop(self):
-        TZ_LOOP = timezone(timedelta(hours=8))
-        pool = await get_pool()
-        async with pool.acquire() as db:
-            travelers = await db.fetch(
-                "SELECT discord_id FROM users WHERE travel_target IS NOT NULL"
-            )
-            for t in travelers:
-                await self._check_arrival(db, t["discord_id"], TZ_LOOP, 30)
-
-    async def _check_arrival(self, db, user_id, tz, secs_per_dist):
-        user = await db.fetchrow(
-            "SELECT current_node, travel_target, travel_start, travel_path FROM users WHERE discord_id=$1",
-            user_id,
-        )
-        if not user or not user["travel_target"] or not user["travel_start"]:
-            return
-        now = datetime.now(tz)
-        start = user["travel_start"]
-        if start.tzinfo is None:
-            start = start.replace(tzinfo=tz)
-        edge = await db.fetchrow(
-            "SELECT base_distance FROM map_edges WHERE (from_node=$1 AND to_node=$2) OR (from_node=$2 AND to_node=$1)",
-            user["current_node"], user["travel_target"],
-        )
-        if not edge:
-            return
-        secs = edge["base_distance"] * secs_per_dist
-        if (now - start).total_seconds() < secs:
-            return
-
-        arrived = user["travel_target"]
-        path = user.get("travel_path") or []
-        await db.execute(
-            "UPDATE users SET current_node=$1 WHERE discord_id=$2",
-            arrived, user_id,
-        )
-        target_node = await db.fetchrow(
-            "SELECT name, is_safe, node_type FROM map_nodes WHERE id=$1", arrived
-        )
-
-        if path:
-            next_target = path[0]
-            remaining_path = path[1:] if len(path) > 1 else []
-            await db.execute(
-                "UPDATE users SET travel_target=$1, travel_path=$2, travel_start=NOW() WHERE discord_id=$3",
-                next_target, remaining_path, user_id,
-            )
-        else:
-            await db.execute(
-                "UPDATE users SET travel_target=NULL, travel_start=NULL, travel_path=NULL WHERE discord_id=$1",
-                user_id,
-            )
-            if target_node:
-                guild = self.get_guild(921725752796393483)
-                if guild:
-                    member = guild.get_member(int(user_id))
-                    if member:
-                        try:
-                            await member.send(f"✅ 已抵達 **{target_node['name']}**！")
-                        except:
-                            pass
-
-            if target_node and target_node["node_type"] == "temple":
-                last_pray = user.get("last_pray_date")
-                muted = user.get("incense_muted_today")
-                today_tz = datetime.now(tz).date()
-                already_collected = last_pray and last_pray == today_tz
-                muted_today = muted and muted == today_tz
-                if not already_collected and not muted_today:
-                    guild = self.get_guild(921725752796393483)
-                    if guild:
-                        member = guild.get_member(int(user_id))
-                        if member:
-                            try:
-                                embed = discord.Embed(
-                                    title="🏯 大士爺廟",
-                                    description=f"🕯️ 大士爺慈悲，是否領取今日 3 柱香？",
-                                    color=discord.Color.gold(),
-                                )
-                                embed.set_footer(text="鬼王庇佑之地")
-                                view = IncenseView(user_id, target_node["name"])
-                                await member.send(embed=embed, view=view)
-                            except:
-                                pass
-
-        if target_node and target_node["is_safe"] and target_node["node_type"] == "capital":
-            await db.execute(
-                "UPDATE users SET current_hp=hp WHERE discord_id=$1", user_id
-            )
-
-    @tasks.loop(minutes=STOCK_PRICE_UPDATE_MINUTES)
+    @tasks.loop(minutes=1)
     async def price_update_loop(self):
-        pool = await get_pool()
-        async with pool.acquire() as db:
-            await update_stock_prices(db)
-            await update_sell_prices(db)
+        now = datetime.now(timezone(timedelta(hours=8)))
+        current_minutes = now.hour * 60 + now.minute
+        do_stocks = current_minutes in (8 * 60, 12 * 60, 16 * 60)
+        do_shop = current_minutes % SHOP_PRICE_UPDATE_MINUTES == 0
+
+        if do_stocks or do_shop:
+            pool = await get_pool()
+            async with pool.acquire() as db:
+                if do_stocks:
+                    await update_stock_prices(db)
+                if do_shop:
+                    await update_sell_prices(db)
 
     @tasks.loop(minutes=1)
     async def stamina_regen_loop(self):

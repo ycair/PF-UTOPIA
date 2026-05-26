@@ -244,19 +244,19 @@ async def seed_data():
             )
 
         stocks = [
-            ("bronze_turtle", "青銅烏龜", 1700, "🐢", 0.05),
-            ("silver_turtle", "白銀烏龜", 1250, "🐢", 0.06),
-            ("gold_turtle", "黃金烏龜", 17000, "🐢", 0.04),
-            ("diamond_turtle", "鑽石烏龜", 3500000, "💎", 0.03),
-            ("stone_turtle", "石頭烏龜", 10, "🪨", 0.10),
-            ("ruby_turtle", "紅寶石烏龜", 800000, "💠", 0.04),
+            ("bronze_turtle", "青銅烏龜", 1000, "🐢", 0.10, 0.10),
+            ("silver_turtle", "白銀烏龜", 10000, "🐢", 0.10, 0.10),
+            ("gold_turtle", "黃金烏龜", 100000, "🐢", 0.10, 0.10),
+            ("diamond_turtle", "鑽石烏龜", 500000, "💎", 0.10, 0.10),
+            ("stone_turtle", "石頭烏龜", 800, "🪨", 0.10, 0.10),
+            ("ruby_turtle", "紅寶石烏龜", 1200000, "💠", 0.20, 0.30),
         ]
-        for code, name, price, emoji, vol in stocks:
+        for code, name, price, emoji, vol_d, vol_u in stocks:
             sid = await db.fetchval(
-                "INSERT INTO stocks (code, name, current_price, emoji, volatility) "
-                "VALUES ($1,$2,$3,$4,$5) ON CONFLICT (code) DO UPDATE SET name=$2 "
+                "INSERT INTO stocks (code, name, current_price, emoji, vol_down, vol_up) "
+                "VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (code) DO UPDATE SET name=$2, current_price=$3, vol_down=$5, vol_up=$6 "
                 "RETURNING id",
-                code, name, price, emoji, vol,
+                code, name, price, emoji, vol_d, vol_u,
             )
             await db.execute(
                 "INSERT INTO stock_history (stock_id, price) VALUES ($1,$2) ON CONFLICT DO NOTHING",
@@ -342,12 +342,17 @@ def user_embed_fields(user):
 
 
 async def update_stock_prices(db):
-    stocks = await db.fetch("SELECT * FROM stocks")
+    stocks = await db.fetch("SELECT * FROM stocks WHERE bankrupt=FALSE")
     for stock in stocks:
-        change = random.uniform(-stock["volatility"], stock["volatility"])
+        vol_down = float(stock.get("vol_down") or 0.1)
+        vol_up = float(stock.get("vol_up") or 0.1)
+        change = random.uniform(-vol_down, vol_up)
         new_price = int(stock["current_price"] * (1 + change))
-        new_price = max(new_price, int(stock["current_price"] * 0.1))
-        await db.execute("UPDATE stocks SET current_price=$1 WHERE id=$2", new_price, stock["id"])
+        new_price = max(new_price, 1)
+        if new_price <= 19:
+            await db.execute("UPDATE stocks SET current_price=0, bankrupt=TRUE WHERE id=$1", stock["id"])
+        else:
+            await db.execute("UPDATE stocks SET current_price=$1 WHERE id=$2", new_price, stock["id"])
         await db.execute(
             "INSERT INTO stock_history (stock_id, price) VALUES ($1,$2)", stock["id"], new_price,
         )
