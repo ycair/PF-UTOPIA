@@ -106,10 +106,37 @@ class UtopiaBot1(commands.Bot):
         if do_stocks or do_shop:
             pool = await get_pool()
             async with pool.acquire() as db:
-                if do_stocks:
-                    await update_stock_prices(db)
                 if do_shop:
                     await update_sell_prices(db)
+                if do_stocks:
+                    await update_stock_prices(db)
+                    stocks = await db.fetch("SELECT * FROM stocks ORDER BY id")
+                    embed = discord.Embed(
+                        title="🏦 投資交易所 — 行情報價",
+                        color=discord.Color.teal(),
+                    )
+                    lines = []
+                    for s in stocks:
+                        prev = await db.fetchval(
+                            "SELECT price FROM stock_history WHERE stock_id=$1 ORDER BY recorded_at DESC LIMIT 1 OFFSET 1",
+                            s["id"])
+                        prev = prev or s["current_price"]
+                        if s["bankrupt"]:
+                            change_str = "💀 破產"
+                        elif s["current_price"] > prev:
+                            pct = (s["current_price"]-prev)/max(prev,1)*100
+                            change_str = f"🔴 {s['current_price']:,}（+{pct:.1f}%）"
+                        elif s["current_price"] < prev:
+                            pct = (prev-s["current_price"])/max(prev,1)*100
+                            change_str = f"🟢 {s['current_price']:,}（-{pct:.1f}%）"
+                        else:
+                            change_str = f"➖ {s['current_price']:,}（0.0%）"
+                        lines.append(f"{s['emoji']} **{s['name']}**\n{change_str}")
+                    embed.add_field(name="", value="\n".join(lines), inline=False)
+                    embed.set_footer(text=f"報價時間：{now.strftime('%Y-%m-%d %H:%M')} | 下次報價：12:00" if now.hour < 12 else "下次報價：16:00" if now.hour < 16 else "下次報價：明日 8:00")
+                    channel = self.get_channel(997109720936620153)
+                    if channel:
+                        await channel.send(embed=embed)
 
     @tasks.loop(minutes=1)
     async def stamina_regen_loop(self):
