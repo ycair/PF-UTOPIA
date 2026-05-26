@@ -1015,3 +1015,4 @@ body {
     display: none;
   }
 }
+#site-footer{position:fixed;bottom:0;left:0;right:0;text-align:center;padding:6px;background:var(--panel);border-top:1px solid var(--border);z-index:200;font-size:7px}#site-footer a{color:var(--dim);text-decoration:none;margin:0 8px}#site-footer a:hover{color:var(--gold)}.footer-sep{color:var(--border)}

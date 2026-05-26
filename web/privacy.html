@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>隱私權政策 — PF UTOPIA</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0a0a0f;--panel:#111118;--border:#2a2a35;--gold:#c9a84c;--text:#c8c8c8;--dim:#888}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:'Press Start 2P',monospace;font-size:10px;line-height:2.2;padding:40px 20px;max-width:800px;margin:0 auto}
+h1{color:var(--gold);font-size:12px;margin-bottom:24px;text-align:center}
+h2{color:var(--gold);font-size:10px;margin:28px 0 12px;border-bottom:1px solid var(--border);padding-bottom:6px}
+p{margin:8px 0;color:var(--dim)}
+ul{margin:8px 0 8px 20px;color:var(--dim)}
+.back{text-align:center;margin-top:40px}
+.back a{color:var(--gold);text-decoration:none;font-size:8px}
+</style>
+</head>
+<body>
+<h1>PF UTOPIA — 隱私權政策</h1>
+
+<p>本隱私權政策旨在向您明確說明在您遊玩 PF UTOPIA 期間，我們如何收集、處理、分析以及保護您的個人數據與遊戲行為資料。</p>
+
+<h2>一、我們收集的資料類型</h2>
+<p>當您參與本遊戲與實驗時，系統將自動於後端 PostgreSQL 資料庫收集並記錄以下資料：</p>
+<p>1. Discord 唯一用戶識別碼、伺服器顯示暱稱、全域使用者名稱及頭像 URL。</p>
+<p>2. 您在伺服器中所發送的所有 Slash Command 指令歷程（包括 /move 之移動軌跡、/explore 與 /dungeon 之戰鬥結果、/shop_sell 與 /invest_* 之金融交易行為）。</p>
+<p>3. 您與遊戲內可能配置之 AI Agent 的對話文本輸入、面對突發事件時的機制選擇以及上下文關聯脈絡。</p>
+<p>4. 您使用 /meditate_start 與 /meditate_stop 進行打坐修行時的離線時長、定時排程所關聯之系統日誌。</p>
+
+<h2>二、資料收集與使用之目的</h2>
+<p>我們承諾收集之所有資料絕不揭露、出售、出租給任何第三方商業行銷機構，亦不進行任何形式之廣告推銷。所有資料之使用均嚴格限定於以下範疇：</p>
+<p>1. 用於維持遊戲基本運作、處理多個 Cog 之間的指令檢查、即時更新 Web 像素看板之大盤數據，並確保您的角色背包與資產實時同步。</p>
+<p>2. 分析真實玩家在具備「圖論地圖路徑」與「供需演算法定價」的世界網絡中，所產生的跑商套利、資源分配及移動決策，藉此評估並優化人工智慧在複雜遊戲環境下的演算法適配度。</p>
+<p>3. 您與系統產生的對話文本，可能作為優化大語言模型 Prompt 結構或評估 Function Calling 閉環穩定性的關鍵觀測指標。</p>
+
+<h2>三、資料分享、去識別化與學術發布</h2>
+<p>1. 本專案在對外發表任何階段性實驗成果、專題報告、學術論文或開源數據集前，必須對原始數據進行嚴格的去識別化處理。我們將會徹底移除或以雜湊演算法遮蔽您的 Discord ID、真實暱稱等一切可直接或間接識別至您個人現實身分的敏感欄位。</p>
+<p>2. 為了驅動遊戲內的 LLM 機制，系統在必要時會將包含您遊戲內脈絡的 JSON Context 發送至第三方大語言模型供應商的 API 接口。發送之文本亦不包含您的敏感私密個資。</p>
+
+<h2>四、資料安全與保存期限</h2>
+<p>1. 本專案採用安全的 PostgreSQL 資料庫連線池機制，並限制外部直接存取。Web 看板端採用 Discord 官方 OAuth2 機制驗證玩家身分，後端僅儲存加密之 Token 雜湊值，確保數據存取之安全性。</p>
+<p>2. 您的遊戲行為數據將在整個 AI Agent 植入遊戲最適配性實驗運行期間持續保存。專案研究結束、實驗目的達成或資料完成去識別化聚合分析後，原始詳細日誌將予以封存或銷毀。</p>
+
+<h2>五、您的權利與資料刪除限制</h2>
+<p>1. 您有權隨時停止遊玩本遊戲並退出 Discord 伺服器，即代表您終止參與本項數據收集實驗。</p>
+<p>2. 您可隨時透過 Discord 私訊專案管理員，要求刪除您的遊戲角色帳號。系統收到請求後，將會將您的 users 資料表內與您 Discord ID 直接關聯之身分記錄予以刪除。</p>
+<p>3. 請特別注意，為了維護學術研究與實驗數據的科學完整性，凡是已經過去識別化處理並已匯入、整合至研究分析模型、聚合統計圖表或已發布之開源數據集中的行為紀錄，將無法單獨被提取、溯源或個別刪除。</p>
+
+<h2>六、同意與聯繫管道</h2>
+<p>當您留在本伺服器、於頻道輸入遊戲指令，或點擊 Web 看板授權登入時，即代表您已充分閱讀、理解並無條件同意接受本使用者服務條款與隱私權政策之所有約定。</p>
+<p>若您對本文件之規範、實驗數據收集方式有任何疑問、建議，或欲行使您的個資刪除權利，請透過本 Discord 伺服器直接聯繫專案管理員。</p>
+
+<div class="back"><a href="/tos.html">← 服務條款</a> | <a href="/">返回地圖 →</a></div>
+</body>
+</html>
