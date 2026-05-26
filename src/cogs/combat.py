@@ -376,67 +376,122 @@ class Combat(commands.Cog):
             if not await _require_outside_city(interaction, user):
                 return
 
-            wb = await world_boss.all()
-            if user["stamina"] < wb["stamina"]:
-                await interaction.response.send_message(f"🔴 體力不足！需要 {wb['stamina']} 點。")
+            today = datetime.now(TZ).date()
+            attempts = await db.fetchval(
+                "SELECT attempt_count FROM world_boss_attempts WHERE user_id=$1 AND attempt_date=$2",
+                str(interaction.user.id), today,
+            ) or 0
+            if attempts >= 2:
+                await interaction.response.send_message("🔴 今日圍剿次數已用完（每日 2 次）。")
                 return
 
-            atk_buff, buff_expires = await _get_atk_buff(db, user)
-            await db.execute(
-                "UPDATE users SET stamina=stamina-$1 WHERE discord_id=$2",
-                wb["stamina"], str(interaction.user.id),
-            )
+            boss = await db.fetchrow("SELECT * FROM world_boss_hp WHERE id=1")
+            if not boss or boss["current_hp"] <= 0:
+                await interaction.response.send_message("🌈 彩虹羊已被擊敗，等待下次重生！")
+                return
 
+            atk_buff, _ = await _get_atk_buff(db, user)
             pet = await _get_active_pet_bonus(db, user["discord_id"])
             u_atk = int((user["attack"] + pet["atk"]) * atk_buff)
             u_def = int((user["defense"] + pet["def"]) * await _get_node_debuff(db, user["discord_id"]))
+            u_hp = user.get("current_hp") or user["hp"]
 
+            boss_def = boss["def"]
+            boss_hp = boss["current_hp"]
+            total_dmg = 0
             turns = []
             turn_count = 0
-            total_dmg = 0
             survived = True
-            for _ in range(100):
+            DAMAGE_CAP = 80000
+            MAX_ROUNDS = 35
+
+            for _ in range(MAX_ROUNDS):
                 turn_count += 1
-                t_dmg = compute_damage(wb["atk"], u_def)
+                dmg = compute_damage(u_atk, boss_def)
+                dmg = min(dmg, DAMAGE_CAP)
+                total_dmg += dmg
+                boss_hp -= dmg
+                boss_def = int(boss_def * 1.05)
+                turns.append(f"你對彩虹羊造成 {dmg:.1f} 點傷害（防禦提升至 {boss_def}）")
+                if boss_hp <= 0:
+                    survived = True
+                    break
+                t_dmg = compute_damage(boss["atk"], u_def) * 1.2
                 u_hp -= t_dmg
                 turns.append(f"彩虹羊對你造成 {t_dmg:.1f} 點傷害")
-                dmg = compute_damage(u_atk, wb["def"])
-                total_dmg += dmg
-                turns.append(f"你對彩虹羊造成 {dmg:.1f} 點傷害")
                 if u_hp <= 0:
                     survived = False
                     break
 
-            if survived:
-                tuo_reward = int(total_dmg * 0.5)
-                wu_reward = int(total_dmg * 0.3)
-                await db.execute(
-                    "UPDATE users SET tuo_bi=tuo_bi+$1, wu_bi=wu_bi+$2 WHERE discord_id=$3",
-                    tuo_reward, wu_reward, str(interaction.user.id),
-                )
-
+            killed = boss_hp <= 0
+            await db.execute(
+                "UPDATE world_boss_hp SET current_hp=GREATEST($1, 0), def=$2 WHERE id=1",
+                boss_hp, boss_def if not killed else boss["def"],
+            )
+            await db.execute(
+                "INSERT INTO world_boss_damage (user_id, damage) VALUES ($1,$2) "
+                "ON CONFLICT (user_id) DO UPDATE SET damage=world_boss_damage.damage+$2",
+                str(interaction.user.id), total_dmg,
+            )
+            await db.execute(
+                "INSERT INTO world_boss_attempts (user_id, attempt_date, attempt_count) VALUES ($1,$2,1) "
+                "ON CONFLICT (user_id, attempt_date) DO UPDATE SET attempt_count=world_boss_attempts.attempt_count+1",
+                str(interaction.user.id), today,
+            )
             await db.execute(
                 "UPDATE users SET current_hp=$1 WHERE discord_id=$2",
                 max(0, round(u_hp, 1)), str(interaction.user.id),
             )
-            await db.execute(
-                "INSERT INTO battle_logs (user_id, zone, enemy, result, turns, damage_dealt, damage_taken, rewards) "
-                "VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
-                str(interaction.user.id), "世界魔皇", "彩虹羊",
-                "survived" if survived else "defeated",
-                turn_count, total_dmg, 0, '{}',
-            )
+
+            total_damage = await db.fetchval(
+                "SELECT damage FROM world_boss_damage WHERE user_id=$1", str(interaction.user.id)
+            ) or total_dmg
+
+            if killed:
+                await db.execute(
+                    "INSERT INTO world_boss_kill (user_id) VALUES ($1)",
+                    str(interaction.user.id),
+                )
+                await db.execute(
+                    "UPDATE users SET yi_bi=yi_bi+30 WHERE discord_id=$1",
+                    str(interaction.user.id),
+                )
+
+            milestones = [10000, 25000, 50000, 100000]
+            rewards = {10000: 50, 25000: 50, 50000: 100, 100000: 200}
+            milestones_hit = []
+            for m in milestones:
+                if total_damage >= m:
+                    claimed = await db.fetchval(
+                        "SELECT 1 FROM world_boss_milestones WHERE user_id=$1 AND milestone=$2",
+                        str(interaction.user.id), m,
+                    )
+                    if not claimed:
+                        await db.execute(
+                            "INSERT INTO world_boss_milestones (user_id, milestone) VALUES ($1,$2)",
+                            str(interaction.user.id), m,
+                        )
+                        wu = rewards[m]
+                        await db.execute(
+                            "UPDATE users SET wu_bi=wu_bi+$1 WHERE discord_id=$2",
+                            wu, str(interaction.user.id),
+                        )
+                        milestones_hit.append((m, wu))
 
         embed = discord.Embed(
-            title="🌈 世界魔皇 — 彩虹羊",
-            description=f"**{interaction.user.display_name}** {'成功存活！' if survived else '被擊敗了...'}",
-            color=discord.Color.purple() if survived else discord.Color.dark_grey(),
+            title=f"🌈 幻彩暴走・彩虹羊 — {'💀 擊殺！' if killed else '討伐結束'}",
+            color=discord.Color.purple() if killed else discord.Color.blue(),
         )
         embed.add_field(name="造成傷害", value=f"{total_dmg:,.1f} 點", inline=True)
-        embed.add_field(name="存活回合", value=f"{turn_count} 回合", inline=True)
-        if survived:
-            embed.add_field(name="獎勵", value=f"💴 托幣 +{tuo_reward:,}\n💶 烏幣 +{wu_reward:,}", inline=True)
+        embed.add_field(name="回合數", value=f"{turn_count}/{MAX_ROUNDS}", inline=True)
+        embed.add_field(name="剩餘 HP", value=f"{max(0, boss_hp):,.0f} / {boss['max_hp']:,}", inline=True)
         embed.add_field(name="戰鬥記錄", value=f"```{await build_battle_log(turns)}```", inline=False)
+        if killed:
+            embed.add_field(name="👑 擊殺者", value=f"**{interaction.user.display_name}** +30 逸幣！", inline=False)
+        if milestones_hit:
+            lines = [f"🏆 {m:,} 點 → +{w} 烏幣" for m, w in milestones_hit]
+            embed.add_field(name="🎯 里程碑達成", value="\n".join(lines), inline=False)
+        embed.set_footer(text=f"剩餘次數：{2 - (attempts + 1)} 次 | 累積傷害：{total_damage:,.0f} 點")
         await interaction.response.send_message(embed=embed)
 
     @app_commands.command(name="move", description="移動到另一個地圖節點")
@@ -599,6 +654,36 @@ class Combat(commands.Cog):
                 main, str(interaction.user.id),
             )
         await interaction.response.send_message("✨ 你已復活！出生於 **烏托邦主城**，滿血狀態。")
+
+    @app_commands.command(name="world_boss_rank", description="查看世界魔皇全服傷害排行榜")
+    async def world_boss_rank(self, interaction: discord.Interaction):
+        pool = await get_pool()
+        async with pool.acquire() as db:
+            boss = await db.fetchrow("SELECT current_hp, max_hp FROM world_boss_hp WHERE id=1")
+            rankings = await db.fetch(
+                "SELECT u.username, wb.damage FROM world_boss_damage wb "
+                "JOIN users u ON u.discord_id=wb.user_id ORDER BY wb.damage DESC LIMIT 10"
+            )
+            killer = await db.fetchrow(
+                "SELECT u.username, wk.killed_at FROM world_boss_kill wk "
+                "JOIN users u ON u.discord_id=wk.user_id ORDER BY wk.killed_at DESC LIMIT 1"
+            )
+
+        embed = discord.Embed(title="🌈 全服傷害沖榜 — 彩虹羊", color=discord.Color.purple())
+        if boss:
+            pct = max(0, boss["current_hp"] / boss["max_hp"] * 100)
+            embed.add_field(name="剩餘血量", value=f"{boss['current_hp']:,} / {boss['max_hp']:,}（{pct:.1f}%）", inline=False)
+        if killer:
+            embed.add_field(name="👑 上次擊殺者", value=f"**{killer['username']}**", inline=False)
+
+        medals = {1: "🥇", 2: "🥈", 3: "🥉"}
+        lines = []
+        for i, r in enumerate(rankings, 1):
+            medal = medals.get(i, f"{i}.")
+            lines.append(f"{medal} **{r['username']}** — {r['damage']:,.0f} 傷害")
+        embed.add_field(name="傷害排行榜", value="\n".join(lines) if lines else "尚無記錄", inline=False)
+        embed.add_field(name="🏆 獎勵", value="🥇 400 烏幣 | 🥈🥉 200 烏幣", inline=False)
+        await interaction.response.send_message(embed=embed)
 
 
 async def setup(bot: commands.Bot):
