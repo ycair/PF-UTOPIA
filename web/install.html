@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PF UTOPIA — 安逸烏托邦</title>
+<meta name="description" content="PF UTOPIA 是一款運行於 Discord 的 MMORPG 文字遊戲，同時也是 AI Agent 在動態經濟與圖論地圖環境下的適配性實驗。">
+<meta name="theme-color" content="#0a0a0f">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0a0a0f;--panel:#111118;--border:#2a2a35;--gold:#c9a84c;--amber:#e8b44f;--teal:#3a8a7a;--text:#c8c8c8;--dim:#888;--primary:#5865F2}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:'Press Start 2P',monospace;font-size:10px;line-height:2.2;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:40px 20px}
+.content{max-width:720px;width:100%}
+.hero{text-align:center;margin-bottom:40px}
+.hero h1{color:var(--gold);font-size:14px;margin-bottom:12px}
+.hero .subtitle{color:var(--teal);font-size:8px;margin-bottom:24px}
+.section{background:var(--panel);border:1px solid var(--border);padding:20px;margin-bottom:16px}
+.section h2{color:var(--amber);font-size:10px;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.section p{color:var(--dim);margin:8px 0;font-size:9px}
+.features{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.feature{background:rgba(0,0,0,0.3);border:1px solid var(--border);padding:12px;text-align:center}
+.feature .icon{font-size:24px;margin-bottom:6px}
+.feature .label{color:var(--text);font-size:8px}
+.cta{text-align:center;margin:24px 0}
+.cta a{display:inline-block;background:var(--primary);color:#fff;padding:14px 32px;text-decoration:none;font-size:11px;border-radius:0}
+.cta a:hover{filter:brightness(1.2)}
+.cta .note{color:var(--dim);font-size:7px;margin-top:12px}
+.experiment{color:var(--teal);font-size:8px;line-height:2;margin-top:12px}
+.footer{text-align:center;margin-top:32px;font-size:7px}
+.footer a{color:var(--dim);text-decoration:none;margin:0 8px}
+.footer a:hover{color:var(--gold)}
+.divider{color:var(--border)}
+</style>
+</head>
+<body>
+<div class="content">
+
+<div class="hero">
+  <h1>PF UTOPIA</h1>
+  <div class="subtitle">安逸烏托邦  ·  Discord MMORPG</div>
+</div>
+
+<div class="section">
+  <h2>🗺️ 遊戲簡介</h2>
+  <p>PF UTOPIA 是一款運行於 Discord 伺服器內的文字 MMORPG。14 個節點的圖論世界地圖、5 種貨幣經濟體系、4 個副本 Boss、6 種投資股票、寵物抽卡養成、離線打坐掛機——全部透過 Slash 指令即時互動。</p>
+  <p>你的角色從烏托邦主城出發，穿越初始草原、翡翠森林、沿海小徑，挑戰舊城邦的輻射殭屍與山林後花園的女僕 Boss。在投資交易所低買高賣烏龜股票，在彩券中心試手氣，在大士爺廟膜拜獲得鬼王加持。</p>
+  
+  <div class="features">
+    <div class="feature"><div class="icon">⚔️</div><div class="label">5 個野外 + 4 個 Boss 副本</div></div>
+    <div class="feature"><div class="icon">💰</div><div class="label">5 種貨幣 + 動態商店經濟</div></div>
+    <div class="feature"><div class="icon">📊</div><div class="label">6 種烏龜股票投資</div></div>
+    <div class="feature"><div class="icon">🔆</div><div class="label">寵物抽卡養成系統</div></div>
+    <div class="feature"><div class="icon">🛐</div><div class="label">離線打坐掛機獎勵</div></div>
+    <div class="feature"><div class="icon">🗺️</div><div class="label">圖論地圖自動導航</div></div>
+    <div class="feature"><div class="icon">🙏</div><div class="label">大士爺廟膜拜加持</div></div>
+    <div class="feature"><div class="icon">🎟</div><div class="label">托幣彩券兌獎</div></div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>🔬 AI Agent 適配性實驗</h2>
+  <p>本專案不僅是一款 Discord 遊戲，更是一項針對「大語言模型驅動之 AI Agent 在網路拓樸與動態經濟環境下之適配性與決策行為」的學術與技術實驗。</p>
+  <div class="experiment">
+    <p>📡 <strong>資料收集</strong>：玩家在圖論地圖上的移動軌跡、供需演算法下的交易決策、戰鬥策略選擇，皆為研究 AI 代理在複雜遊戲環境中行為模式的關鍵觀測數據。</p>
+    <p>🔒 <strong>去識別化</strong>：所有對外發表的實驗數據均經過嚴格去識別化處理，不包含任何可直接識別個人身分的資訊。</p>
+    <p>🤖 <strong>未來 AI GM</strong>：專案架構已預留 AI Game Master 介面，未來將由 LLM 動態生成劇情、觸發隨機事件、管理世界狀態。</p>
+  </div>
+</div>
+
+<div class="cta">
+  <a href="https://discord.gg/WaPkXXQU47">🔗 加入 PF UTOPIA Discord 伺服器</a>
+  <div class="note">進入伺服器後使用 /register 開始你的冒險</div>
+</div>
+
+<div class="footer">
+  <a href="/">世界地圖</a><span class="divider">|</span>
+  <a href="/tos.html">服務條款</a><span class="divider">|</span>
+  <a href="/privacy.html">隱私權政策</a>
+</div>
+
+</div>
+</body>
+</html>
