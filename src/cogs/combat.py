@@ -394,7 +394,8 @@ class Combat(commands.Cog):
             pet = await _get_active_pet_bonus(db, user["discord_id"])
             u_atk = int((user["attack"] + pet["atk"]) * atk_buff)
             u_def = int((user["defense"] + pet["def"]) * await _get_node_debuff(db, user["discord_id"]))
-            u_hp = user.get("current_hp") or user["hp"]
+            original_hp = user.get("current_hp") or user["hp"]
+            u_hp = user["hp"]
 
             boss_def = boss["def"]
             boss_hp = boss["current_hp"]
@@ -440,7 +441,7 @@ class Combat(commands.Cog):
             )
             await db.execute(
                 "UPDATE users SET current_hp=$1 WHERE discord_id=$2",
-                max(0, round(u_hp, 1)), str(interaction.user.id),
+                original_hp, str(interaction.user.id),
             )
 
             total_damage = await db.fetchval(
