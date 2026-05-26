@@ -136,6 +136,22 @@ NODE_BOSS_MAP = {
 }
 
 
+async def _get_atk_buff(db, user):
+    mult = user.get("atk_buff_mult") or 1.0
+    expires = user.get("atk_buff_expires")
+    if expires and mult > 1.0:
+        if expires.tzinfo is None:
+            expires = expires.replace(tzinfo=TZ)
+        if datetime.now(TZ) > expires:
+            await db.execute(
+                "UPDATE users SET atk_buff_mult=1.0, atk_buff_expires=NULL WHERE discord_id=$1",
+                user["discord_id"],
+            )
+            return 1.0, None
+        return mult, expires
+    return 1.0, None
+
+
 class Combat(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -184,7 +200,7 @@ class Combat(commands.Cog):
                 )
                 return
 
-            atk_buff = user["atk_buff_mult"] if user.get("atk_buff_mult") else 1.0
+            atk_buff, buff_expires = await _get_atk_buff(db, user)
             await db.execute(
                 "UPDATE users SET stamina=stamina-$1 WHERE discord_id=$2",
                 stamina_cost, str(interaction.user.id),
@@ -245,8 +261,11 @@ class Combat(commands.Cog):
             for item_name, qty in rewards.get("items", {}).items():
                 reward_lines.append(f"📦 {item_name} ×{qty}")
             embed.add_field(name="🎁 掉落獎勵", value="\n".join(reward_lines) if reward_lines else "沒有掉落物品", inline=False)
-            if atk_buff > 1.0:
-                embed.add_field(name="⚡ 攻擊加成", value=f"膜拜 buff 剩餘 {user.get('atk_buff_expires','?')}", inline=True)
+            if atk_buff > 1.0 and buff_expires:
+                remaining = buff_expires - datetime.now(TZ)
+                m = int(remaining.total_seconds() // 60)
+                s = int(remaining.total_seconds() % 60)
+                embed.add_field(name="⚡ 攻擊加成", value=f"+{int((atk_buff-1)*100)}% 剩餘 {m}分{s}秒", inline=True)
         embed.set_footer(text=f"剩餘體力：{user['stamina'] - stamina_cost} 點 | HP：{max(0, round(u_hp, 1))}/{user['hp']}")
         await interaction.response.send_message(embed=embed)
 
@@ -287,7 +306,7 @@ class Combat(commands.Cog):
                 await interaction.response.send_message(f"🔴 體力不足！需要 {boss_data['stamina']} 點。")
                 return
 
-            atk_buff = user["atk_buff_mult"] if user.get("atk_buff_mult") else 1.0
+            atk_buff, buff_expires = await _get_atk_buff(db, user)
             await db.execute(
                 "UPDATE users SET stamina=stamina-$1 WHERE discord_id=$2",
                 boss_data["stamina"], str(interaction.user.id),
@@ -362,7 +381,7 @@ class Combat(commands.Cog):
                 await interaction.response.send_message(f"🔴 體力不足！需要 {wb['stamina']} 點。")
                 return
 
-            atk_buff = user["atk_buff_mult"] if user.get("atk_buff_mult") else 1.0
+            atk_buff, buff_expires = await _get_atk_buff(db, user)
             await db.execute(
                 "UPDATE users SET stamina=stamina-$1 WHERE discord_id=$2",
                 wb["stamina"], str(interaction.user.id),
