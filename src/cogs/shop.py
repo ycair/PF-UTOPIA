@@ -10,35 +10,47 @@ ZONE_ITEM_MAP = {}
 
 
 async def _get_sell_price(db, user_id, item_id):
-    user = await db.fetchrow(
-        "SELECT current_node FROM users WHERE discord_id=$1", str(user_id)
-    )
+    user = await db.fetchrow("SELECT current_node FROM users WHERE discord_id=$1", str(user_id))
     node_id = user["current_node"] if user else None
     if not node_id:
         return None, "flat", "未知位置"
 
-    node = await db.fetchrow("SELECT name, node_type, is_safe FROM map_nodes WHERE id=$1", node_id)
+    node = await db.fetchrow("SELECT name, node_type FROM map_nodes WHERE id=$1", node_id)
+    in_city = node["node_type"] in IN_CITY_TYPES if node else False
+
     price_row = await db.fetchrow(
         "SELECT current_price, direction FROM node_prices WHERE node_id=$1 AND item_id=$2",
-        node_id, item_id,
-    )
+        node_id, item_id)
     if price_row:
         return price_row["current_price"], price_row["direction"], node["name"]
 
-    if node["is_safe"]:
+    if in_city:
         price_row = await db.fetchrow(
-            "SELECT current_price, direction FROM node_prices WHERE node_id=1 AND item_id=$2"
-        )
+            "SELECT current_price, direction FROM node_prices WHERE node_id=1 AND item_id=$2",
+            item_id)
         if price_row:
             return price_row["current_price"], price_row["direction"], node["name"]
 
-    main_price = await db.fetchval(
-        "SELECT current_price FROM node_prices WHERE node_id=1 AND item_id=$1", item_id
-    )
-    if main_price:
-        return int(main_price * 0.3), "flat", node["name"]
+    return None, "flat", node["name"] if node else "未知"
 
-    return None, "flat", node["name"]
+
+IN_CITY_TYPES = ("capital", "town", "arena", "sanctuary")
+
+
+async def _get_shop_context(db, user_id):
+    user = await db.fetchrow(
+        "SELECT current_node FROM users WHERE discord_id=$1", str(user_id))
+    node_id = user["current_node"] if user else None
+    node_name = "未知"
+    in_city = False
+    is_temple = False
+    if node_id:
+        node = await db.fetchrow(
+            "SELECT name, node_type FROM map_nodes WHERE id=$1", node_id)
+        node_name = node["name"] if node else "未知"
+        in_city = node["node_type"] in IN_CITY_TYPES if node else False
+        is_temple = node["node_type"] == "temple" if node else False
+    return node_id, node_name, in_city, is_temple
 
 
 class Shop(commands.Cog):
@@ -57,34 +69,21 @@ class Shop(commands.Cog):
             return
         pool = await get_pool()
         async with pool.acquire() as db:
-            user = await db.fetchrow(
-                "SELECT current_node FROM users WHERE discord_id=$1",
-                str(interaction.user.id),
-            )
-            node_id = user["current_node"] if user else None
-            node_name = "未知"
-            is_safe = False
-            if node_id:
-                node = await db.fetchrow("SELECT name, is_safe FROM map_nodes WHERE id=$1", node_id)
-                node_name = node["name"] if node else "未知"
-                is_safe = node["is_safe"] if node else False
+            node_id, node_name, in_city, is_temple = await _get_shop_context(db, interaction.user.id)
 
             main_prices = await db.fetch(
                 "SELECT i.*, np.current_price AS sell_price, np.direction FROM items i "
                 "JOIN node_prices np ON np.item_id=i.id AND np.node_id=1 "
                 "WHERE i.item_type='material' ORDER BY i.id"
             )
-
-            node_prices = {}
+            node_price_map = {}
             if node_id:
                 rows = await db.fetch(
-                    "SELECT item_id, current_price, direction FROM node_prices WHERE node_id=$1",
-                    node_id)
+                    "SELECT item_id, current_price, direction FROM node_prices WHERE node_id=$1", node_id)
                 for r in rows:
-                    node_prices[r["item_id"]] = (r["current_price"], r["direction"])
+                    node_price_map[r["item_id"]] = (r["current_price"], r["direction"])
 
-            cons = await db.fetch(
-                "SELECT * FROM items WHERE item_type='consumable' ORDER BY id")
+            cons = await db.fetch("SELECT * FROM items WHERE item_type='consumable' ORDER BY id")
 
         embed = discord.Embed(
             title=f"🏪 商店 — {node_name}",
@@ -94,25 +93,31 @@ class Shop(commands.Cog):
         mats = []
         for r in main_prices:
             d = dict(r)
-            if node_id and d["id"] in node_prices:
-                price, direction = node_prices[d["id"]]
-            elif is_safe:
+            if in_city:
                 price, direction = d["sell_price"], d.get("direction", "flat")
+            elif node_id and d["id"] in node_price_map:
+                price, direction = node_price_map[d["id"]]
             else:
-                price = int(d["sell_price"] * 0.3)
-                direction = "flat"
-
+                continue
             dir_icon = {"up": "🔺", "down": "🔻", "flat": "➖"}.get(direction, "➖")
-            mats.append(f"{d['emoji']} **{d['name']}**  {dir_icon} 收購價 {price:,} 托幣")
+            mats.append(f"{d['emoji']} **{d['name']}**  {dir_icon} {price:,} 托幣")
 
         if mats and category in ("all", "materials"):
             embed.add_field(name="📦 材料收購", value="\n".join(mats), inline=False)
+        elif category in ("all", "materials") and not in_city:
+            embed.add_field(name="📦 材料收購", value="此地不收購材料", inline=False)
 
         if category in ("all", "consumables"):
-            cons_lines = [f"{r['emoji']} **{r['name']}**  💰 {r['buy_price']:,} 托幣" for r in cons]
+            price_mult = 1.0 if in_city else 1.2
+            cons_lines = []
+            for r in cons:
+                p = int(r["buy_price"] * price_mult)
+                tag = "" if in_city else f"（城外+20%）"
+                cons_lines.append(f"{r['emoji']} **{r['name']}**  💰 {p:,} 托幣{tag}")
             embed.add_field(name="🧪 消耗品", value="\n".join(cons_lines), inline=False)
 
-        embed.set_footer(text=f"{'🛡️ 安全區價格' if is_safe else '⚠️ 野外收購價（主城30%）'} | /shop_buy /shop_sell")
+        embed.set_footer(
+            text=f"{'🏰 城內' if in_city else '⚠️ 城外'} | /shop_buy 購買消耗品 | /shop_sell 出售材料")
         await interaction.response.send_message(embed=embed)
 
     @app_commands.command(name="shop_buy", description="購買消耗品（使用托幣）")
@@ -136,11 +141,15 @@ class Shop(commands.Cog):
             if not user:
                 await interaction.response.send_message("🔴 請先註冊！", ephemeral=True)
                 return
+            _, _, in_city, _ = await _get_shop_context(db, interaction.user.id)
+
             item = await db.fetchrow("SELECT * FROM items WHERE name=$1 AND item_type='consumable'", item_name)
             if not item:
                 await interaction.response.send_message("🔴 此道具無法購買。", ephemeral=True)
                 return
-            total_cost = item["buy_price"] * quantity
+            price_mult = 1.0 if in_city else 1.2
+            unit_price = int(item["buy_price"] * price_mult)
+            total_cost = unit_price * quantity
             if user["tuo_bi"] < total_cost:
                 await interaction.response.send_message(
                     f"🔴 托幣不足！需要 {total_cost:,} 元，當前 {user['tuo_bi']:,} 元。"
@@ -155,8 +164,9 @@ class Shop(commands.Cog):
                 "ON CONFLICT (user_id, item_id) DO UPDATE SET quantity=inventory.quantity+$3",
                 str(interaction.user.id), item["id"], quantity,
             )
+        tag = "" if in_city else "（城外+20%）"
         await interaction.response.send_message(
-            f"✅ 購買成功！{item['emoji']} **{item_name}** ×{quantity}（花費 {total_cost:,} 托幣）"
+            f"✅ 購買成功！{item['emoji']} **{item_name}** ×{quantity}（花費 {total_cost:,} 托幣）{tag}"
         )
 
     @app_commands.command(name="shop_sell", description="出售材料給商店（獲得托幣，價格浮動）")
