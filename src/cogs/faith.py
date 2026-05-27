@@ -136,22 +136,24 @@ class Faith(commands.Cog):
 
             today = datetime.now(TZ).date()
             last_pray = user.get("last_pray_date")
-            if last_pray and last_pray == today:
-                current_incense = user["daily_incense"]
-            else:
-                current_incense = DAILY_INCENSE
+            incense = user.get("daily_incense") or 0
 
-            if current_incense < INCENSE_PER_PRAY:
+            if last_pray and last_pray != today:
+                incense = 0
+
+            if incense < INCENSE_PER_PRAY:
                 await interaction.response.send_message(
-                    f"🔴 香火不足！每日 3 柱香，膜拜需 {INCENSE_PER_PRAY} 柱。明日再來。"
+                    f"🔴 香火不足！請先到大士爺廟領取每日 3 柱香。\n"
+                    f"當前 {incense} / {DAILY_INCENSE} 柱。"
                 )
                 return
 
+            new_incense = incense - INCENSE_PER_PRAY
             await db.execute(
-                "UPDATE users SET daily_incense=daily_incense-$1, last_pray_date=$2, "
+                "UPDATE users SET daily_incense=$1, last_pray_date=$2, "
                 "stamina=max_stamina, current_hp=hp, atk_buff_mult=$3, atk_buff_expires=NOW()+INTERVAL'30 minutes', "
                 "xiu_wei_progress=xiu_wei_progress+1 WHERE discord_id=$4",
-                INCENSE_PER_PRAY, today, PRAY_ATK_MULT, str(interaction.user.id),
+                new_incense, today, PRAY_ATK_MULT, str(interaction.user.id),
             )
 
             level_up = await _check_xiu_wei_level(db, str(interaction.user.id))
@@ -160,7 +162,7 @@ class Faith(commands.Cog):
         embed.add_field(name="鬼王庇佑", value="❤️ 滿血恢復", inline=True)
         embed.add_field(name="戰鬥加持", value=f"⚔️ 攻擊力 +50%（{PRAY_BUFF_MINUTES} 分鐘）", inline=True)
         embed.add_field(name="修為", value="+1 進度", inline=True)
-        embed.add_field(name="剩餘香火", value=f"{user['daily_incense'] - INCENSE_PER_PRAY} / {DAILY_INCENSE} 柱", inline=True)
+        embed.add_field(name="剩餘香火", value=f"{new_incense} / {DAILY_INCENSE} 柱", inline=True)
         if level_up:
             embed.add_field(name="🎉 修為升級", value=level_up, inline=False)
         await interaction.response.send_message(embed=embed)
