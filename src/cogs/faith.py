@@ -39,6 +39,10 @@ class Faith(commands.Cog):
             if not user:
                 await interaction.response.send_message("🔴 請先註冊！", ephemeral=True)
                 return
+            node = await db.fetchrow("SELECT name FROM map_nodes WHERE id=$1", user.get("current_node"))
+            if not node or node["name"] != "女僕教堂":
+                await interaction.response.send_message("🔴 你必須在女僕教堂節點才能打坐！請先 `/move 女僕教堂`。", ephemeral=True)
+                return
             if user["meditating"]:
                 await interaction.response.send_message("🔴 你已經在打坐中了！", ephemeral=True)
                 return
