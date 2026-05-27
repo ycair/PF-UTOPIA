@@ -57,29 +57,62 @@ class Shop(commands.Cog):
             return
         pool = await get_pool()
         async with pool.acquire() as db:
-            query = "SELECT i.*, COALESCE(sp.current_price, i.base_price) AS sell_price, COALESCE(sp.direction, 'flat') AS direction FROM items i LEFT JOIN shop_sell_prices sp ON sp.item_id = i.id"
-            if category == "materials":
-                query += " WHERE i.item_type='material'"
-            elif category == "consumables":
-                query += " WHERE i.item_type='consumable'"
-            query += " ORDER BY i.item_type, i.id"
-            rows = await db.fetch(query)
+            user = await db.fetchrow(
+                "SELECT current_node FROM users WHERE discord_id=$1",
+                str(interaction.user.id),
+            )
+            node_id = user["current_node"] if user else None
+            node_name = "未知"
+            is_safe = False
+            if node_id:
+                node = await db.fetchrow("SELECT name, is_safe FROM map_nodes WHERE id=$1", node_id)
+                node_name = node["name"] if node else "未知"
+                is_safe = node["is_safe"] if node else False
 
-        embed = discord.Embed(title="🏪 安逸商店", color=discord.Color.gold())
+            main_prices = await db.fetch(
+                "SELECT i.*, np.current_price AS sell_price, np.direction FROM items i "
+                "JOIN node_prices np ON np.item_id=i.id AND np.node_id=1 "
+                "WHERE i.item_type='material' ORDER BY i.id"
+            )
 
-        mats, cons = [], []
-        for r in rows:
+            node_prices = {}
+            if node_id:
+                rows = await db.fetch(
+                    "SELECT item_id, current_price, direction FROM node_prices WHERE node_id=$1",
+                    node_id)
+                for r in rows:
+                    node_prices[r["item_id"]] = (r["current_price"], r["direction"])
+
+            cons = await db.fetch(
+                "SELECT * FROM items WHERE item_type='consumable' ORDER BY id")
+
+        embed = discord.Embed(
+            title=f"🏪 商店 — {node_name}",
+            color=discord.Color.gold(),
+        )
+
+        mats = []
+        for r in main_prices:
             d = dict(r)
-            if d["item_type"] == "material":
-                dir_icon = {"up": "🔺", "down": "🔻", "flat": "➖"}.get(d["direction"], "➖")
-                mats.append(f"{d['emoji']} **{d['name']}**  {dir_icon} 賣價 {d['sell_price']:,} 托幣\n　{d['description']}")
+            if node_id and d["id"] in node_prices:
+                price, direction = node_prices[d["id"]]
+            elif is_safe:
+                price, direction = d["sell_price"], d.get("direction", "flat")
             else:
-                cons.append(f"{d['emoji']} **{d['name']}**  💰 {d['buy_price']:,} 托幣\n　{d['description']}")
+                price = int(d["sell_price"] * 0.3)
+                direction = "flat"
+
+            dir_icon = {"up": "🔺", "down": "🔻", "flat": "➖"}.get(direction, "➖")
+            mats.append(f"{d['emoji']} **{d['name']}**  {dir_icon} 收購價 {price:,} 托幣")
+
         if mats and category in ("all", "materials"):
-            embed.add_field(name="📦 材料（賣給商店換托幣，價格浮動）", value="\n".join(mats), inline=False)
-        if cons and category in ("all", "consumables"):
-            embed.add_field(name="🧪 消耗品（用托幣購買，固定價格）", value="\n".join(cons), inline=False)
-        embed.set_footer(text="/shop_buy 購買消耗品 | /shop_sell 出售材料")
+            embed.add_field(name="📦 材料收購", value="\n".join(mats), inline=False)
+
+        if category in ("all", "consumables"):
+            cons_lines = [f"{r['emoji']} **{r['name']}**  💰 {r['buy_price']:,} 托幣" for r in cons]
+            embed.add_field(name="🧪 消耗品", value="\n".join(cons_lines), inline=False)
+
+        embed.set_footer(text=f"{'🛡️ 安全區價格' if is_safe else '⚠️ 野外收購價（主城30%）'} | /shop_buy /shop_sell")
         await interaction.response.send_message(embed=embed)
 
     @app_commands.command(name="shop_buy", description="購買消耗品（使用托幣）")
