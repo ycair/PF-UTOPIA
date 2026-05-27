@@ -96,6 +96,8 @@ class UtopiaBot1(commands.Bot):
         self.tree.copy_global_to(guild=guild)
         await self.tree.sync(guild=guild)
         self.price_update_loop.start()
+        self.stamina_regen_loop.start()
+        self.travel_check_loop.start()
 
     @tasks.loop(minutes=1)
     async def price_update_loop(self):
@@ -147,7 +149,79 @@ class UtopiaBot1(commands.Bot):
                 "UPDATE users SET stamina=LEAST(stamina+1, max_stamina) WHERE stamina < max_stamina"
             )
 
-    @price_update_loop.before_loop
+    @tasks.loop(seconds=15)
+    async def travel_check_loop(self):
+        pool = await get_pool()
+        async with pool.acquire() as db:
+            travelers = await db.fetch("SELECT discord_id FROM users WHERE travel_target IS NOT NULL")
+            for t in travelers:
+                await self._do_arrival(db, t["discord_id"])
+
+    async def _do_arrival(self, db, user_id):
+        user = await db.fetchrow(
+            "SELECT current_node, travel_target, travel_start, travel_path FROM users WHERE discord_id=$1", user_id)
+        if not user or not user["travel_target"] or not user["travel_start"]:
+            return
+        now = datetime.now(timezone.utc)
+        start = user["travel_start"]
+        if start.tzinfo is None:
+            start = start.replace(tzinfo=timezone.utc)
+        edge = await db.fetchrow(
+            "SELECT base_distance FROM map_edges WHERE (from_node=$1 AND to_node=$2) OR (from_node=$2 AND to_node=$1)",
+            user["current_node"], user["travel_target"])
+        if not edge:
+            return
+        if (now - start).total_seconds() < edge["base_distance"] * 30:
+            return
+
+        arrived_node = user["travel_target"]
+        path = user.get("travel_path") or []
+        await db.execute("UPDATE users SET current_node=$1 WHERE discord_id=$2", arrived_node, user_id)
+
+        target_node = await db.fetchrow("SELECT name, is_safe, node_type FROM map_nodes WHERE id=$1", arrived_node)
+        if path:
+            next_t = path[0]
+            remaining = path[1:] if len(path) > 1 else []
+            await db.execute(
+                "UPDATE users SET travel_target=$1, travel_path=$2, travel_start=NOW() WHERE discord_id=$3",
+                next_t, remaining, user_id)
+        else:
+            await db.execute(
+                "UPDATE users SET travel_target=NULL, travel_start=NULL, travel_path=NULL WHERE discord_id=$1", user_id)
+            if target_node:
+                guild = self.get_guild(921725752796393483)
+                if guild:
+                    member = guild.get_member(int(user_id))
+                    if member:
+                        try:
+                            await member.send(f"✅ 已抵達 **{target_node['name']}**！")
+                        except:
+                            pass
+                if target_node["node_type"] == "temple":
+                    last_pray = user.get("last_pray_date")
+                    muted = user.get("incense_muted_today")
+                    today = datetime.now(timezone(timedelta(hours=8))).date()
+                    if (not last_pray or last_pray != today) and (not muted or muted != today):
+                        guild = self.get_guild(921725752796393483)
+                        if guild:
+                            member = guild.get_member(int(user_id))
+                            if member:
+                                try:
+                                    embed = discord.Embed(
+                                        title="🏯 大士爺廟",
+                                        description="🕯️ 大士爺慈悲，是否領取今日 3 柱香？",
+                                        color=discord.Color.gold())
+                                    embed.set_footer(text="鬼王庇佑之地")
+                                    await member.send(embed=embed, view=IncenseView(user_id, target_node["name"]))
+                                except:
+                                    pass
+
+            if target_node and target_node["is_safe"] and target_node["node_type"] == "capital":
+                await db.execute("UPDATE users SET current_hp=hp WHERE discord_id=$1", user_id)
+
+    @travel_check_loop.before_loop
+    async def before_travel_check(self):
+        await self.wait_until_ready()
     async def before_price_update(self):
         await self.wait_until_ready()
 
