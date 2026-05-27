@@ -369,11 +369,14 @@ async def update_sell_prices(db):
         SELECT sp.*, i.base_price FROM shop_sell_prices sp JOIN items i ON i.id = sp.item_id
     """)
     for p in prices:
-        change = random.uniform(-0.15, 0.15)
-        new_price = int(p["current_price"] * (1 + change))
-        new_price = max(new_price, int(p["base_price"] * 0.3))
-        new_price = min(new_price, int(p["base_price"] * 3))
-        direction = "up" if new_price > p["current_price"] else ("down" if new_price < p["current_price"] else "flat")
+        base = p["base_price"]
+        current = p["current_price"]
+        pull = (base - current) * 0.15
+        noise = base * random.uniform(-0.10, 0.10)
+        new_price = int(current + pull + noise)
+        new_price = max(new_price, int(base * 0.3))
+        new_price = min(new_price, int(base * 3))
+        direction = "up" if new_price > current else ("down" if new_price < current else "flat")
         await db.execute(
             "UPDATE shop_sell_prices SET current_price=$1, direction=$2, last_update=NOW() WHERE item_id=$3",
             new_price, direction, p["item_id"],
