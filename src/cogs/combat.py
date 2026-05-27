@@ -122,7 +122,7 @@ def _rewards_json(rewards):
 
 
 NODE_ZONE_MAP = {
-    "初始草原": ["initial_grassland_outer", "initial_grassland_inner"],
+    "初始草原": ["initial_grassland_outer"],
     "翡翠森林": ["jade_forest_outer"],
     "沿海小徑": ["coastal_path"],
     "搗蛋精靈之森": ["spirit_forest"],
@@ -268,8 +268,8 @@ class Combat(commands.Cog):
                 embed.add_field(name="⚡ 攻擊加成", value=f"+{int((atk_buff-1)*100)}% 剩餘 {m}分{s}秒", inline=True)
 
         footer = f"剩餘體力：{user['stamina'] - stamina_cost} 點 | HP：{max(0, round(u_hp, 1))}/{user['hp']}"
-        if node and node["name"] == "翡翠森林" and won and random.random() < 0.15:
-            footer += " | 🌲 迷路深入內部！再次探索可遇更強怪物"
+        if node and node["name"] in ("翡翠森林", "初始草原") and won and random.random() < 0.15:
+            footer += f" | 🌲 迷路深入內部！再次探索可遇更強怪物"
         embed.set_footer(text=footer)
         await interaction.response.send_message(embed=embed)
 

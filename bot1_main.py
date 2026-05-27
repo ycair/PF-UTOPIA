@@ -146,7 +146,7 @@ class UtopiaBot1(commands.Bot):
         pool = await get_pool()
         async with pool.acquire() as db:
             await db.execute(
-                "UPDATE users SET stamina=LEAST(stamina+1, max_stamina) WHERE stamina < max_stamina"
+                "UPDATE users SET stamina=LEAST(stamina+1, max_stamina) WHERE stamina < max_stamina AND NOT meditating"
             )
 
     @tasks.loop(seconds=15)
