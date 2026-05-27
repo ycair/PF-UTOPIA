@@ -317,13 +317,19 @@ def user_embed_fields(user):
     score = compute_ability_score(user["attack"], user["defense"], user["hp"])
     pct = user["stamina"] / max(user["max_stamina"], 1) * 100
     exp_bar, exp_pct = format_exp_bar(user["chat_exp"], user["chat_exp_next"])
+    yuan_level = user.get("yuan_shen_level") or 0
+    yuan_exp = user.get("yuan_shen_exp") or 0
+    yuan_next = (yuan_level + 1) * 50
+    xiu_level = user.get("xiu_wei_level") or 0
+    xiu_prog = user.get("xiu_wei_progress") or 0
+    xiu_next = (xiu_level + 1) * 3
     return [
         ("狀態",
          f"能力評分：**{score}** 分\n"
          f"體力：`[{user['stamina']}pt]` {pct:.1f}%\n"
          f"最大體力：{user['max_stamina']} 點\n"
-         f"元神：{user['yuan_shen']} 點\n"
-         f"修為：{user['xiu_wei']} 點"),
+         f"元神 Lv.{yuan_level}：{yuan_exp}/{yuan_next} EXP\n"
+         f"修為 Lv.{xiu_level}：{xiu_prog}/{xiu_next} 次膜拜"),
         ("活躍",
          f"聊天等級：**{user['chat_level']}**\n"
          f"聊天經驗值：`[{user['chat_exp']:.1f}pt/{user['chat_exp_next']:.1f}pt]` {exp_pct:.1f}%"),
