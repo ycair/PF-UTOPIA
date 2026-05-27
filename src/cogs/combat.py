@@ -387,7 +387,7 @@ class Combat(commands.Cog):
 
             boss = await db.fetchrow("SELECT * FROM world_boss_hp WHERE id=1")
             if not boss or boss["current_hp"] <= 0:
-                await interaction.response.send_message("🌈 彩虹羊已被擊敗，等待下次重生！")
+                await interaction.response.send_message("🌈 彩虹羊已被擊敗，等待管理員重置。")
                 return
 
             atk_buff, _ = await _get_atk_buff(db, user)
