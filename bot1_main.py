@@ -27,6 +27,7 @@ class IncenseView(discord.ui.View):
         if str(interaction.user.id) != self.user_id:
             await interaction.response.send_message("這不是你的面板。", ephemeral=True)
             return
+        await interaction.response.defer()
         today = datetime.now(timezone(timedelta(hours=8))).date()
         pool = await get_pool()
         async with pool.acquire() as db:
@@ -39,7 +40,7 @@ class IncenseView(discord.ui.View):
             child.disabled = True
         embed = interaction.message.embeds[0]
         embed.description = f"**{self.temple_name}**\n✅ 已領取 3 柱香！使用 `/pray` 膜拜吧。"
-        await interaction.response.edit_message(embed=embed, view=self)
+        await interaction.message.edit(embed=embed, view=self)
 
     @discord.ui.button(label="🙏 不持香參拜", style=discord.ButtonStyle.grey)
     async def skip(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -57,6 +58,7 @@ class IncenseView(discord.ui.View):
         if str(interaction.user.id) != self.user_id:
             await interaction.response.send_message("這不是你的面板。", ephemeral=True)
             return
+        await interaction.response.defer()
         today = datetime.now(timezone(timedelta(hours=8))).date()
         pool = await get_pool()
         async with pool.acquire() as db:
@@ -69,7 +71,7 @@ class IncenseView(discord.ui.View):
         button.disabled = True
         embed = interaction.message.embeds[0]
         embed.description += "\n☑️ 今天不再詢問（已設定）"
-        await interaction.response.edit_message(embed=embed, view=self)
+        await interaction.message.edit(embed=embed, view=self)
 
 
 class UtopiaBot1(commands.Bot):
