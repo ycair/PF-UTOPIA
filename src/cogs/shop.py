@@ -86,7 +86,7 @@ class Shop(commands.Cog):
             cons = await db.fetch("SELECT * FROM items WHERE item_type='consumable' ORDER BY id")
 
         embed = discord.Embed(
-            title=f"🏪 商店 — {node_name}",
+            title=f"🏪 {'商店' if in_city else '流浪商人'} — {node_name}",
             color=discord.Color.gold(),
         )
 
@@ -97,6 +97,7 @@ class Shop(commands.Cog):
                 price, direction = d["sell_price"], d.get("direction", "flat")
             elif node_id and d["id"] in node_price_map:
                 price, direction = node_price_map[d["id"]]
+                price = max(price, 1)
             else:
                 continue
             dir_icon = {"up": "🔺", "down": "🔻", "flat": "➖"}.get(direction, "➖")
