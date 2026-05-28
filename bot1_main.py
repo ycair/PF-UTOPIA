@@ -214,8 +214,10 @@ class UtopiaBot1(commands.Bot):
                 if target_node["node_type"] == "temple":
                     last_pray = user.get("last_pray_date")
                     muted = user.get("incense_muted_today")
+                    has_incense = (user.get("daily_incense") or 0) >= 3
                     today = datetime.now(timezone(timedelta(hours=8))).date()
-                    if (not last_pray or last_pray != today) and (not muted or muted != today):
+                    already_got = has_incense and last_pray == today
+                    if not already_got and not (muted and muted == today):
                         guild = self.get_guild(921725752796393483)
                         if guild:
                             member = guild.get_member(int(user_id))
