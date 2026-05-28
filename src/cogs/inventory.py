@@ -110,11 +110,10 @@ class Inventory(commands.Cog):
                 )
                 effect_msg = "體力 +150、HP +150！"
             elif item_name == "線香":
-                await db.execute(
-                    "UPDATE users SET xian_xiang=xian_xiang+1 WHERE discord_id=$1",
-                    str(interaction.user.id),
+                await interaction.response.send_message(
+                    "🕯️ 線香無法直接使用。請到大士爺廟使用 `/pray` 膜拜，每次自動消耗 3 柱。", ephemeral=True
                 )
-                effect_msg = "線香 +1！去 `/pray` 膜拜吧。"
+                return
             elif item_name == "糖果":
                 await db.execute(
                     "UPDATE users SET candy=candy+1 WHERE discord_id=$1",
