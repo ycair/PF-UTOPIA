@@ -41,6 +41,12 @@ class IncenseView(discord.ui.View):
                 "UPDATE users SET daily_incense=3, last_pray_date=$1 WHERE discord_id=$2",
                 today, self.user_id,
             )
+            incense_item = await db.fetchval("SELECT id FROM items WHERE name='線香'")
+            if incense_item:
+                await db.execute(
+                    "INSERT INTO inventory (user_id, item_id, quantity) VALUES ($1,$2,3) "
+                    "ON CONFLICT (user_id, item_id) DO UPDATE SET quantity=inventory.quantity+3",
+                    self.user_id, incense_item)
         button.disabled = True
         for child in self.children:
             child.disabled = True

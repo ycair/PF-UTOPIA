@@ -155,6 +155,11 @@ class Faith(commands.Cog):
                 "xiu_wei_progress=xiu_wei_progress+1 WHERE discord_id=$4",
                 new_incense, today, PRAY_ATK_MULT, str(interaction.user.id),
             )
+            incense_item = await db.fetchval("SELECT id FROM items WHERE name='線香'")
+            if incense_item:
+                await db.execute(
+                    "UPDATE inventory SET quantity=quantity-$1 WHERE user_id=$2 AND item_id=$3",
+                    INCENSE_PER_PRAY, str(interaction.user.id), incense_item)
 
             level_up = await _check_xiu_wei_level(db, str(interaction.user.id))
 
