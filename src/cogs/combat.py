@@ -380,6 +380,13 @@ class Combat(commands.Cog):
             if not await _require_outside_city(interaction, user):
                 return
 
+            node = await db.fetchrow("SELECT name FROM map_nodes WHERE id=$1", user["current_node"])
+            if not node or node["name"] != "世界魔皇巢穴":
+                await interaction.response.send_message(
+                    "🔴 必須在 **世界魔皇巢穴** 才能討伐彩虹羊！請先 `/move 世界魔皇巢穴`。", ephemeral=True
+                )
+                return
+
             today = datetime.now(TZ).date()
             attempts = await db.fetchval(
                 "SELECT attempt_count FROM world_boss_attempts WHERE user_id=$1 AND attempt_date=$2",

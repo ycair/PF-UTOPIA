@@ -173,7 +173,8 @@ class UtopiaBot1(commands.Bot):
 
     async def _do_arrival(self, db, user_id):
         user = await db.fetchrow(
-            "SELECT current_node, travel_target, travel_start, travel_path FROM users WHERE discord_id=$1", user_id)
+            "SELECT current_node, travel_target, travel_start, travel_path, "
+            "daily_incense, last_pray_date, incense_muted_today FROM users WHERE discord_id=$1", user_id)
         if not user or not user["travel_target"] or not user["travel_start"]:
             return
         now = datetime.now(timezone.utc)
