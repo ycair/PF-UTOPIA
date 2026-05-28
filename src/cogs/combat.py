@@ -192,11 +192,11 @@ class Combat(commands.Cog):
                 )
                 return
 
-            u_hp = user.get("current_hp") or user["hp"]
+            u_hp = user["current_hp"] if user.get("current_hp") is not None else user["hp"]
 
             if u_hp <= 0:
                 await interaction.response.send_message(
-                    "💀 你已經陣亡了！使用 `/revive` 花費 1,500 托幣復活。"
+                    "💀 你已經陣亡了！使用 `/revive` 花費 1,500 托幣復活。", ephemeral=True
                 )
                 return
 
@@ -398,7 +398,7 @@ class Combat(commands.Cog):
             pet = await _get_active_pet_bonus(db, user["discord_id"])
             u_atk = int((user["attack"] + pet["atk"]) * atk_buff)
             u_def = int((user["defense"] + pet["def"]) * await _get_node_debuff(db, user["discord_id"]))
-            original_hp = user.get("current_hp") or user["hp"]
+            original_hp = user["current_hp"] if user.get("current_hp") is not None else user["hp"]
             u_hp = user["hp"]
 
             boss_def = boss["def"]
@@ -645,7 +645,7 @@ class Combat(commands.Cog):
             if not user:
                 await interaction.response.send_message("🔴 請先註冊！", ephemeral=True)
                 return
-            if (user.get("current_hp") or user["hp"]) > 0:
+            if (user.get("current_hp") if user.get("current_hp") is not None else user["hp"]) > 0:
                 await interaction.response.send_message("你還活著，不需要復活。", ephemeral=True)
                 return
             if user["tuo_bi"] < 1500:

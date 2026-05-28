@@ -31,6 +31,12 @@ class IncenseView(discord.ui.View):
         today = datetime.now(timezone(timedelta(hours=8))).date()
         pool = await get_pool()
         async with pool.acquire() as db:
+            user = await db.fetchrow(
+                "SELECT daily_incense, last_pray_date FROM users WHERE discord_id=$1",
+                self.user_id)
+            if user and user["daily_incense"] >= 3 and user["last_pray_date"] == today:
+                await interaction.followup.send("今日已領取過香火了。", ephemeral=True)
+                return
             await db.execute(
                 "UPDATE users SET daily_incense=3, last_pray_date=$1 WHERE discord_id=$2",
                 today, self.user_id,

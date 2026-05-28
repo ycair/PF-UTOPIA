@@ -293,11 +293,12 @@ async def create_user(db, discord_id, username):
 
 async def get_inventory(db, user_id):
     return await db.fetch("""
-        SELECT i.*, inv.quantity, COALESCE(sp.current_price, i.base_price) AS sell_price,
-               COALESCE(sp.direction, 'flat') AS direction
+        SELECT i.*, inv.quantity,
+               COALESCE(np.current_price, i.base_price) AS sell_price,
+               COALESCE(np.direction, 'flat') AS direction
         FROM inventory inv
         JOIN items i ON i.id = inv.item_id
-        LEFT JOIN shop_sell_prices sp ON sp.item_id = i.id
+        LEFT JOIN node_prices np ON np.item_id = i.id AND np.node_id=1
         WHERE inv.user_id=$1
         ORDER BY i.item_type, i.name
     """, str(user_id))
