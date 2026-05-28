@@ -649,6 +649,23 @@ class Combat(commands.Cog):
             else:
                 await interaction.response.send_message(f"📍 你目前在 **{cur['name'] if cur else '未知'}**。")
 
+    @app_commands.command(name="move_cancel", description="取消進行中的移動")
+    async def move_cancel(self, interaction: discord.Interaction):
+        pool = await get_pool()
+        async with pool.acquire() as db:
+            user = await get_user(db, interaction.user.id)
+            if not user:
+                await interaction.response.send_message("🔴 請先註冊！", ephemeral=True)
+                return
+            if not user.get("travel_target"):
+                await interaction.response.send_message("📍 你沒有進行中的移動。", ephemeral=True)
+                return
+            await db.execute(
+                "UPDATE users SET travel_target=NULL, travel_start=NULL, travel_path=NULL WHERE discord_id=$1",
+                str(interaction.user.id),
+            )
+        await interaction.response.send_message("🛑 移動已取消。")
+
     @app_commands.command(name="revive", description="花費 1,500 托幣復活，出生於主城滿血")
     async def revive(self, interaction: discord.Interaction):
         pool = await get_pool()
