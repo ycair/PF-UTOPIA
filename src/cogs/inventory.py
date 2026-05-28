@@ -123,7 +123,7 @@ class Inventory(commands.Cog):
                 effect_msg = "糖果 +1！去供奉搗蛋精靈吧。"
             elif item_name == "轉法輪":
                 await db.execute(
-                    "UPDATE users SET xiu_wei_progress=xiu_wei_progress+10 WHERE discord_id=$1",
+                    "UPDATE users SET xiu_wei_progress=xiu_wei_progress+3 WHERE discord_id=$1",
                     str(interaction.user.id),
                 )
                 from src.cogs.faith import _check_xiu_wei_level

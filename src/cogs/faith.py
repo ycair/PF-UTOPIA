@@ -1,5 +1,6 @@
 """信仰系統: 女僕教堂打坐掛機 + 大士爺廟膜拜 buff"""
 import random
+import math
 from datetime import datetime, timezone, timedelta
 
 import discord
@@ -199,7 +200,7 @@ async def _check_xiu_wei_level(db, user_id):
     )
     level = user["xiu_wei_level"]
     prog = user["xiu_wei_progress"]
-    needed = (level + 1) * 3
+    needed = int((level + 1) * 3 * (1 + math.log(level + 1 + 1e-9) * 0.5))
     if prog >= needed:
         await db.execute(
             "UPDATE users SET xiu_wei_level=xiu_wei_level+1, xiu_wei_progress=xiu_wei_progress-$1, "

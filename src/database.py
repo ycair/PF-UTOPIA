@@ -323,7 +323,7 @@ def user_embed_fields(user):
     yuan_next = (yuan_level + 1) * 50
     xiu_level = user.get("xiu_wei_level") or 0
     xiu_prog = user.get("xiu_wei_progress") or 0
-    xiu_next = (xiu_level + 1) * 3
+    xiu_next = int((xiu_level + 1) * 3 * (1 + math.log(xiu_level + 1 + 1e-9) * 0.5))
     return [
         ("狀態",
          f"能力評分：**{score}** 分\n"
