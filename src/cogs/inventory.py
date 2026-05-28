@@ -39,9 +39,11 @@ class Inventory(commands.Cog):
                 emoji = r["emoji"]
                 name = r["name"]
                 qty = r["quantity"]
-                if r.get("sell_price"):
+                if r["item_type"] == "material" and r.get("sell_price"):
                     direction_icon = {"up": "🔺", "down": "🔻", "flat": "➖"}.get(r["direction"], "➖")
                     lines.append(f"{emoji} {name} ×{qty}  {direction_icon} 賣價 {r['sell_price']:,} 托幣")
+                elif r["item_type"] == "consumable":
+                    lines.append(f"{emoji} {name} ×{qty}  買價 {r['buy_price']:,} 托幣")
                 else:
                     lines.append(f"{emoji} {name} ×{qty}")
             return "\n".join(lines) if lines else "（空）"
