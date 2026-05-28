@@ -497,6 +497,11 @@ class Combat(commands.Cog):
         embed.add_field(name="造成傷害", value=f"{total_dmg:,.1f} 點", inline=True)
         embed.add_field(name="回合數", value=f"{turn_count}/{MAX_ROUNDS}", inline=True)
         embed.add_field(name="剩餘 HP", value=f"{max(0, boss_hp):,.0f} / {boss['max_hp']:,}", inline=True)
+        embed.add_field(
+            name="⚡ 場地效果",
+            value="🛡️ 七彩羊毛：每回合防禦 +5%\n🌈 虹光共振：敵方傷害 +20%\n🛑 傷害上限：80,000/回合",
+            inline=False,
+        )
         embed.add_field(name="戰鬥記錄", value=f"```{await build_battle_log(turns)}```", inline=False)
         if killed:
             embed.add_field(name="👑 擊殺者", value=f"**{interaction.user.display_name}** +30 逸幣！", inline=False)
