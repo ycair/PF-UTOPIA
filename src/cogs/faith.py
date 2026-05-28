@@ -136,11 +136,7 @@ class Faith(commands.Cog):
                 return
 
             today = datetime.now(TZ).date()
-            last_pray = user.get("last_pray_date")
             incense = user.get("daily_incense") or 0
-
-            if last_pray and last_pray != today:
-                incense = 0
 
             if incense < INCENSE_PER_PRAY:
                 await interaction.response.send_message(

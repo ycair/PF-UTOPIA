@@ -38,7 +38,7 @@ class IncenseView(discord.ui.View):
                 await interaction.followup.send("今日已領取過香火了。", ephemeral=True)
                 return
             await db.execute(
-                "UPDATE users SET daily_incense=3, last_pray_date=$1 WHERE discord_id=$2",
+                "UPDATE users SET daily_incense=daily_incense+3, last_pray_date=$1 WHERE discord_id=$2",
                 today, self.user_id,
             )
             incense_item = await db.fetchval("SELECT id FROM items WHERE name='線香'")
