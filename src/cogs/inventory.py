@@ -123,10 +123,12 @@ class Inventory(commands.Cog):
                 effect_msg = "糖果 +1！去供奉搗蛋精靈吧。"
             elif item_name == "轉法輪":
                 await db.execute(
-                    "UPDATE users SET xiu_wei=xiu_wei+10 WHERE discord_id=$1",
+                    "UPDATE users SET xiu_wei_progress=xiu_wei_progress+10 WHERE discord_id=$1",
                     str(interaction.user.id),
                 )
-                effect_msg = "修為 +10！"
+                from src.cogs.faith import _check_xiu_wei_level
+                level_up = await _check_xiu_wei_level(db, str(interaction.user.id))
+                effect_msg = f"修為進度 +10{' 🎉 ' + level_up if level_up else ''}"
 
         await interaction.response.send_message(f"✅ 使用 {item['emoji']} **{item_name}** — {effect_msg}")
 
