@@ -5,16 +5,20 @@ from discord import app_commands
 from src.database import get_pool, get_user
 from src.channel_guard import require_channel
 
-ADVENTURER_RANKS = [
-    (0, "見習", 0),
-    (1, "銅級", 1000),
-    (2, "銀級", 5000),
-    (3, "金級", 15000),
-    (4, "白金級", 40000),
-    (5, "鑽石級", 100000),
-    (6, "傳說級", 250000),
-    (7, "神話級", 500000),
-]
+TIERS = ["瓷", "鐵", "銀", "金", "白金", "秘銀", "精金"]
+SUB = ["I", "II", "III", "IV", "V"]
+
+
+def rank_name(level):
+    if level >= 35:
+        return "精金 V"
+    tier = level // 5
+    sub = level % 5
+    return f"{TIERS[tier]} {SUB[sub]}"
+
+
+def rank_exp_needed(level):
+    return (level + 1) * 50
 
 
 class Guild(commands.Cog):
@@ -53,34 +57,30 @@ class Guild(commands.Cog):
                 await interaction.response.send_message("🔴 請先到 **冒險者公會** 認證！", ephemeral=True)
                 return
 
-            score = user["attack"] * 100 + user["defense"] * 50 + user["hp"] * 10
-            current_rank = user.get("adventurer_rank") or 0
-            new_rank = current_rank
-            rank_name = ADVENTURER_RANKS[current_rank][1]
+            current = user.get("adventurer_rank") or 0
+            exp = user.get("adventurer_exp") or 0
+            new_level = current
+            while new_level < 35:
+                need = rank_exp_needed(new_level)
+                if exp < need:
+                    break
+                exp -= need
+                new_level += 1
 
-            for i, (rid, rname, required) in enumerate(ADVENTURER_RANKS):
-                if score >= required and rid > current_rank:
-                    new_rank = rid
-                    rank_name = rname
-
-            if new_rank > current_rank:
+            if new_level > current:
                 await db.execute(
-                    "UPDATE users SET adventurer_rank=$1 WHERE discord_id=$2",
-                    new_rank, str(interaction.user.id),
+                    "UPDATE users SET adventurer_rank=$1, adventurer_exp=$2 WHERE discord_id=$3",
+                    new_level, exp, str(interaction.user.id),
                 )
-                old_name = ADVENTURER_RANKS[current_rank][1]
                 await interaction.response.send_message(
-                    f"🎖️ 冒險者等級提升！**{old_name}** → **{rank_name}**\n"
-                    f"能力評分：{score:,} 分"
+                    f"🎖️ 冒險者等級提升！**{rank_name(current)}** → **{rank_name(new_level)}**"
                 )
             else:
-                next_idx = min(current_rank + 1, len(ADVENTURER_RANKS) - 1)
-                next_name = ADVENTURER_RANKS[next_idx][1]
-                next_req = ADVENTURER_RANKS[next_idx][2]
+                need = rank_exp_needed(current)
                 await interaction.response.send_message(
-                    f"🎖️ 當前等級：**{rank_name}**\n"
-                    f"能力評分：{score:,} 分\n"
-                    f"下一級：**{next_name}**（需 {next_req:,} 分）"
+                    f"🎖️ 當前等級：**{rank_name(current)}**\n"
+                    f"EXP：{exp} / {need}\n"
+                    f"戰力評分：{user['attack']*100+user['defense']*50+user['hp']*10:,} 分"
                 )
 
 

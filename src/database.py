@@ -324,13 +324,19 @@ def user_embed_fields(user):
     xiu_level = user.get("xiu_wei_level") or 0
     xiu_prog = user.get("xiu_wei_progress") or 0
     xiu_next = int((xiu_level + 1) * 3 * (1 + math.log(xiu_level + 1 + 1e-9) * 0.5))
+    adv_rank = user.get("adventurer_rank") or 0
+    adv_exp = user.get("adventurer_exp") or 0
+    adv_next = (adv_rank + 1) * 50
+    from src.cogs.guild import rank_name
+    rank_str = rank_name(adv_rank)
     return [
         ("狀態",
          f"能力評分：**{score}** 分\n"
          f"體力：`[{user['stamina']}pt]` {pct:.1f}%\n"
          f"最大體力：{user['max_stamina']} 點\n"
          f"元神 Lv.{yuan_level}：{yuan_exp}/{yuan_next} EXP\n"
-         f"修為 Lv.{xiu_level}：{xiu_prog}/{xiu_next} 次膜拜"),
+         f"修為 Lv.{xiu_level}：{xiu_prog}/{xiu_next} 次膜拜\n"
+         f"冒險者：{rank_str} ({adv_exp}/{adv_next} EXP)"),
         ("活躍",
          f"聊天等級：**{user['chat_level']}**\n"
          f"聊天經驗值：`[{user['chat_exp']:.1f}pt/{user['chat_exp_next']:.1f}pt]` {exp_pct:.1f}%"),
