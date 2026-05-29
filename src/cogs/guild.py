@@ -18,7 +18,8 @@ def rank_name(level):
 
 
 def rank_exp_needed(level):
-    return (level + 1) * 50
+    import math
+    return int((level + 1) * 50 * (1 + math.log(level + 1 + 1e-9) * 0.8))
 
 
 class Guild(commands.Cog):

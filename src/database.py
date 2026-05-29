@@ -326,7 +326,7 @@ def user_embed_fields(user):
     xiu_next = int((xiu_level + 1) * 3 * (1 + math.log(xiu_level + 1 + 1e-9) * 0.5))
     adv_rank = user.get("adventurer_rank") or 0
     adv_exp = user.get("adventurer_exp") or 0
-    adv_next = (adv_rank + 1) * 50
+    adv_next = int((adv_rank + 1) * 50 * (1 + math.log(adv_rank + 1 + 1e-9) * 0.8))
     from src.cogs.guild import rank_name
     rank_str = rank_name(adv_rank)
     return [

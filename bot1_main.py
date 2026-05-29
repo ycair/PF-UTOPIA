@@ -183,11 +183,12 @@ class UtopiaBot1(commands.Bot):
         if start.tzinfo is None:
             start = start.replace(tzinfo=timezone.utc)
         edge = await db.fetchrow(
-            "SELECT base_distance FROM map_edges WHERE (from_node=$1 AND to_node=$2) OR (from_node=$2 AND to_node=$1)",
+            "SELECT base_distance, base_danger FROM map_edges WHERE (from_node=$1 AND to_node=$2) OR (from_node=$2 AND to_node=$1)",
             user["current_node"], user["travel_target"])
         if not edge:
             return
-        if (now - start).total_seconds() < edge["base_distance"] * 30:
+        travel_secs = 3 if edge["base_danger"] == 0 else edge["base_distance"] * 30
+        if (now - start).total_seconds() < travel_secs:
             return
 
         arrived_node = user["travel_target"]

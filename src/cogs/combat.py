@@ -580,7 +580,7 @@ class Combat(commands.Cog):
                     "SELECT * FROM map_edges WHERE (from_node=$1 AND to_node=$2) OR (from_node=$2 AND to_node=$1)",
                     current, next_node,
                 )
-                travel_secs = next_edge["base_distance"] * secs_per
+                travel_secs = 3 if next_edge["base_danger"] == 0 else next_edge["base_distance"] * secs_per
                 remaining = path_ids[2:] if len(path_ids) > 2 else []
 
                 path_names = []
@@ -634,7 +634,7 @@ class Combat(commands.Cog):
             )
 
             if edge and start:
-                travel_secs = edge["base_distance"] * (await game_params.move_seconds_per_distance or 30)
+                travel_secs = 3 if edge.get("base_danger", 99) == 0 else edge["base_distance"] * (await game_params.move_seconds_per_distance or 30)
                 elapsed = (now - start).total_seconds()
                 if elapsed >= travel_secs:
                     await db.execute(
