@@ -528,6 +528,7 @@ class Combat(commands.Cog):
         app_commands.Choice(name="🥏 寵物天堂", value="寵物天堂"),
         app_commands.Choice(name="🏚️ 舊城邦", value="舊城邦"),
         app_commands.Choice(name="🌸 山林後的花園", value="山林後的花園"),
+        app_commands.Choice(name="📜 冒險者公會", value="冒險者公會"),
     ])
     async def move(self, interaction: discord.Interaction, target: str):
         pool = await get_pool()

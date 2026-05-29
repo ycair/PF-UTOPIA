@@ -106,6 +106,7 @@ class UtopiaBot1(commands.Bot):
         await self.load_extension("src.cogs.social")
         await self.load_extension("src.cogs.utility")
         await self.load_extension("src.cogs.reaction_roles")
+        await self.load_extension("src.cogs.guild")
         guild = discord.Object(id=GUILD_ID)
         self.tree.copy_global_to(guild=guild)
         await self.tree.sync(guild=guild)

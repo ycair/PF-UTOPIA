@@ -13,10 +13,26 @@ class Daily(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    @app_commands.command(name="daily", description="每日簽到，領取安幣獎勵")
+    @app_commands.command(name="daily", description="在冒險者公會每日簽到，領取安幣獎勵")
     async def daily(self, interaction: discord.Interaction):
         if not await require_channel(interaction, "daily"):
             return
+        base_an_bi = await game_params.daily_base_an_bi or 100
+        streak_bonus = await game_params.daily_streak_bonus or 20
+        daily_max = await game_params.daily_max_an_bi or 250
+        pool = await get_pool()
+        async with pool.acquire() as db:
+            user = await get_user(db, interaction.user.id)
+            if not user:
+                await interaction.response.send_message("🔴 請先註冊！", ephemeral=True)
+                return
+
+            node = await db.fetchrow("SELECT name FROM map_nodes WHERE id=$1", user.get("current_node"))
+            if not node or node["name"] != "冒險者公會":
+                await interaction.response.send_message(
+                    "🔴 請先到 **冒險者公會** 簽到！使用 `/move 冒險者公會`。", ephemeral=True
+                )
+                return
         base_an_bi = await game_params.daily_base_an_bi or 100
         streak_bonus = await game_params.daily_streak_bonus or 20
         daily_max = await game_params.daily_max_an_bi or 250
