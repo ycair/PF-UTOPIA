@@ -382,3 +382,7 @@ async def update_sell_prices(db):
             "UPDATE shop_sell_prices SET current_price=$1, direction=$2, last_update=NOW() WHERE item_id=$3",
             new_price, direction, p["item_id"],
         )
+        await db.execute(
+            "UPDATE node_prices SET current_price=$1, direction=$2 WHERE node_id=1 AND item_id=$3",
+            new_price, direction, p["item_id"],
+        )
