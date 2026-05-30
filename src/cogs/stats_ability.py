@@ -3,7 +3,7 @@ from discord.ext import commands
 from discord import app_commands
 from datetime import datetime, timezone, timedelta
 
-from src.database import get_pool, get_user
+from src.database import get_pool, get_user, require_alive
 from src.hotconfig import game_params
 
 TZ = timezone(timedelta(hours=8))
@@ -34,6 +34,8 @@ class StatsAbility(commands.Cog):
             if not user:
                 await interaction.response.send_message("🔴 請先註冊！", ephemeral=True)
                 return
+            if not await require_alive(interaction, user):
+                return
             if user["ability_points"] < amount:
                 await interaction.response.send_message(
                     f"🔴 能力點不足！當前 {user['ability_points']} 點，需要 {amount} 點。",
@@ -58,6 +60,8 @@ class StatsAbility(commands.Cog):
             user = await get_user(db, interaction.user.id)
             if not user:
                 await interaction.response.send_message("🔴 請先註冊！", ephemeral=True)
+                return
+            if not await require_alive(interaction, user):
                 return
             if user["an_bi"] < RESET_COST:
                 await interaction.response.send_message(

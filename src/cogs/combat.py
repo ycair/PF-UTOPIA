@@ -5,7 +5,7 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 
-from src.database import get_pool, get_user
+from src.database import get_pool, get_user, require_alive
 from src.hotconfig import combat_zones, dungeon_bosses, world_boss, game_params
 from src.channel_guard import require_channel
 
@@ -197,14 +197,10 @@ class Combat(commands.Cog):
                 )
                 return
 
-            u_hp = user["current_hp"] if user.get("current_hp") is not None else user["hp"]
-
-            if u_hp <= 0:
-                await interaction.response.send_message(
-                    "💀 你已經陣亡了！使用 `/revive` 花費 1,500 托幣復活。", ephemeral=True
-                )
+            if not await require_alive(interaction, user):
                 return
 
+            u_hp = user["current_hp"] if user.get("current_hp") is not None else user["hp"]
             atk_buff, buff_expires = await _get_atk_buff(db, user)
             await db.execute(
                 "UPDATE users SET stamina=stamina-$1 WHERE discord_id=$2",
@@ -287,6 +283,8 @@ class Combat(commands.Cog):
                 await interaction.response.send_message("🔴 請先註冊！", ephemeral=True)
                 return
             if not await _require_outside_city(interaction, user):
+                return
+            if not await require_alive(interaction, user):
                 return
 
             node = await db.fetchrow("SELECT name FROM map_nodes WHERE id=$1", user["current_node"])
@@ -382,6 +380,8 @@ class Combat(commands.Cog):
                 await interaction.response.send_message("🔴 請先註冊！", ephemeral=True)
                 return
             if not await _require_outside_city(interaction, user):
+                return
+            if not await require_alive(interaction, user):
                 return
 
             node = await db.fetchrow("SELECT name FROM map_nodes WHERE id=$1", user["current_node"])
@@ -545,6 +545,8 @@ class Combat(commands.Cog):
             user = await get_user(db, interaction.user.id)
             if not user:
                 await interaction.response.send_message("🔴 請先註冊！", ephemeral=True)
+                return
+            if not await require_alive(interaction, user):
                 return
             if user["meditating"]:
                 await interaction.response.send_message("🔴 打坐中無法移動！請先 `/meditate_stop`。", ephemeral=True)
@@ -715,6 +717,8 @@ class Combat(commands.Cog):
             user = await get_user(db, interaction.user.id)
             if not user:
                 await interaction.response.send_message("🔴 請先註冊！", ephemeral=True)
+                return
+            if not await require_alive(interaction, user):
                 return
             if user.get("travel_target"):
                 await interaction.response.send_message("🔴 你正在移動中，無法搭乘驛站！", ephemeral=True)

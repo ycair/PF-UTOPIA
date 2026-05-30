@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 
-from src.database import get_pool, get_user
+from src.database import get_pool, get_user, require_alive
 from src.channel_guard import require_channel
 from src.hotconfig import combat_zones
 
@@ -143,6 +143,8 @@ class Shop(commands.Cog):
             if not user:
                 await interaction.response.send_message("🔴 請先註冊！", ephemeral=True)
                 return
+            if not await require_alive(interaction, user):
+                return
             _, _, in_city, _ = await _get_shop_context(db, interaction.user.id)
 
             item = await db.fetchrow("SELECT * FROM items WHERE name=$1 AND item_type='consumable'", item_name)
@@ -203,16 +205,18 @@ class Shop(commands.Cog):
     async def shop_sell(self, interaction: discord.Interaction, item_name: str, quantity: int = 1):
         if not await require_channel(interaction, "shop_sell"):
             return
-        if quantity < 1:
-            await interaction.response.send_message("🔴 數量需大於 0。", ephemeral=True)
-            return
-        pool = await get_pool()
-        async with pool.acquire() as db:
-            user = await get_user(db, interaction.user.id)
-            if not user:
-                await interaction.response.send_message("🔴 請先註冊！", ephemeral=True)
+            if quantity < 1:
+                await interaction.response.send_message("🔴 數量需大於 0。", ephemeral=True)
                 return
-            item = await db.fetchrow("SELECT * FROM items WHERE name=$1 AND item_type='material'", item_name)
+            pool = await get_pool()
+            async with pool.acquire() as db:
+                user = await get_user(db, interaction.user.id)
+                if not user:
+                    await interaction.response.send_message("🔴 請先註冊！", ephemeral=True)
+                    return
+                if not await require_alive(interaction, user):
+                    return
+                item = await db.fetchrow("SELECT * FROM items WHERE name=$1 AND item_type='material'", item_name)
             if not item:
                 await interaction.response.send_message("🔴 此道具無法出售。", ephemeral=True)
                 return

@@ -7,7 +7,7 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 
-from src.database import get_pool, get_user
+from src.database import get_pool, get_user, require_alive
 from src.hotconfig import game_params
 from src.channel_guard import require_channel
 
@@ -40,6 +40,8 @@ class Faith(commands.Cog):
             if not user:
                 await interaction.response.send_message("🔴 請先註冊！", ephemeral=True)
                 return
+            if not await require_alive(interaction, user):
+                return
             node = await db.fetchrow("SELECT name FROM map_nodes WHERE id=$1", user.get("current_node"))
             if not node or node["name"] != "女僕教堂":
                 await interaction.response.send_message("🔴 你必須在女僕教堂節點才能打坐！請先 `/move 女僕教堂`。", ephemeral=True)
@@ -65,6 +67,8 @@ class Faith(commands.Cog):
             user = await get_user(db, interaction.user.id)
             if not user:
                 await interaction.response.send_message("🔴 請先註冊！", ephemeral=True)
+                return
+            if not await require_alive(interaction, user):
                 return
             if not user["meditating"]:
                 await interaction.response.send_message("🔴 你沒有在打坐！", ephemeral=True)
@@ -133,6 +137,8 @@ class Faith(commands.Cog):
             user = await get_user(db, interaction.user.id)
             if not user:
                 await interaction.response.send_message("🔴 請先註冊！", ephemeral=True)
+                return
+            if not await require_alive(interaction, user):
                 return
 
             today = datetime.now(TZ).date()

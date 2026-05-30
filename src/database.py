@@ -377,6 +377,21 @@ def format_exp_bar(current, next_level):
     return "█" * filled + "░" * (20 - filled), pct
 
 
+def is_dead(user):
+    hp = user.get("current_hp") if user.get("current_hp") is not None else user.get("hp", 100)
+    return hp <= 0
+
+
+async def require_alive(interaction, user):
+    if is_dead(user):
+        await interaction.response.send_message(
+            "💀 你已經陣亡了！無法使用此功能。\n使用 `/revive` 花費 1,500 托幣復活。",
+            ephemeral=True,
+        )
+        return False
+    return True
+
+
 def user_embed_fields(user):
     score = compute_ability_score(user["attack"], user["defense"], user["hp"])
     pct = user["stamina"] / max(user["max_stamina"], 1) * 100

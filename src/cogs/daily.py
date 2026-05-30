@@ -4,7 +4,7 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 
-from src.database import get_pool, get_user
+from src.database import get_pool, get_user, require_alive
 from src.hotconfig import game_params
 from src.channel_guard import require_channel
 
@@ -43,6 +43,8 @@ class Daily(commands.Cog):
                 await interaction.response.send_message(
                     "🔴 請先使用 `/register` 註冊！", ephemeral=True
                 )
+                return
+            if not await require_alive(interaction, user):
                 return
 
             today = date.today()

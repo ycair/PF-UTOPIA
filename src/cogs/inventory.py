@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 
-from src.database import get_pool, get_user, get_inventory
+from src.database import get_pool, get_user, get_inventory, require_alive
 from src.channel_guard import require_channel
 
 
@@ -72,6 +72,8 @@ class Inventory(commands.Cog):
             user = await get_user(db, interaction.user.id)
             if not user:
                 await interaction.response.send_message("🔴 請先註冊！", ephemeral=True)
+                return
+            if not await require_alive(interaction, user):
                 return
 
             item = await db.fetchrow("SELECT * FROM items WHERE name=$1", item_name)

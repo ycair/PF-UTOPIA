@@ -236,7 +236,9 @@ class UtopiaBot1(commands.Bot):
                                     pass
 
             if target_node and target_node["is_safe"] and target_node["node_type"] == "capital":
-                await db.execute("UPDATE users SET current_hp=hp WHERE discord_id=$1", user_id)
+                hp_row = await db.fetchrow("SELECT current_hp, hp FROM users WHERE discord_id=$1", user_id)
+                if hp_row and (hp_row["current_hp"] is None or hp_row["current_hp"] > 0):
+                    await db.execute("UPDATE users SET current_hp=hp WHERE discord_id=$1", user_id)
 
     @travel_check_loop.before_loop
     async def before_travel_check(self):
