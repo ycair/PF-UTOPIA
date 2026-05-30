@@ -678,7 +678,7 @@ class Combat(commands.Cog):
             )
         await interaction.response.send_message("🛑 移動已取消。")
 
-    @app_commands.command(name="revive", description="花費 1,500 托幣復活，出生於主城滿血")
+    @app_commands.command(name="revive", description="復活（每日首次免費，其後 1,500 托幣）")
     async def revive(self, interaction: discord.Interaction):
         pool = await get_pool()
         async with pool.acquire() as db:
@@ -689,17 +689,28 @@ class Combat(commands.Cog):
             if (user.get("current_hp") if user.get("current_hp") is not None else user["hp"]) > 0:
                 await interaction.response.send_message("你還活著，不需要復活。", ephemeral=True)
                 return
-            if user["tuo_bi"] < 1500:
+            today = datetime.now(TZ).date()
+            is_free = (user.get("last_free_revive") is None) or (user["last_free_revive"] != today)
+            if not is_free and user["tuo_bi"] < 1500:
                 await interaction.response.send_message(
                     f"🔴 托幣不足！需要 1,500 元，當前 {user['tuo_bi']:,} 元。"
                 )
                 return
             main = await db.fetchval("SELECT id FROM map_nodes WHERE name='烏托邦主城'")
-            await db.execute(
-                "UPDATE users SET current_hp=hp, current_node=$1, tuo_bi=tuo_bi-1500 WHERE discord_id=$2",
-                main, str(interaction.user.id),
-            )
-        await interaction.response.send_message("✨ 你已復活！出生於 **烏托邦主城**，滿血狀態。")
+            if is_free:
+                await db.execute(
+                    "UPDATE users SET current_hp=hp, current_node=$1, last_free_revive=$2 WHERE discord_id=$3",
+                    main, today, str(interaction.user.id),
+                )
+            else:
+                await db.execute(
+                    "UPDATE users SET current_hp=hp, current_node=$1, tuo_bi=tuo_bi-1500 WHERE discord_id=$2",
+                    main, str(interaction.user.id),
+                )
+        cost_msg = "🆓 免費（每日一次）" if is_free else "💴 花費 1,500 托幣"
+        await interaction.response.send_message(
+            f"✨ 你已復活！出生於 **烏托邦主城**，滿血狀態。\n{cost_msg}"
+        )
 
     @app_commands.command(name="train", description="搭乘驛站傳送至其他車站（需持有車票）")
     @app_commands.describe(target="目的地車站（留空則顯示車站清單）")

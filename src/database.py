@@ -188,6 +188,7 @@ async def init_db():
         );
 
         ALTER TABLE map_nodes ADD COLUMN IF NOT EXISTS has_train_station BOOLEAN DEFAULT FALSE;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS last_free_revive DATE;
         """)
 
 
