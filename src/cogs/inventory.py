@@ -54,15 +54,18 @@ class Inventory(commands.Cog):
         await interaction.response.send_message(embed=embed)
 
     @app_commands.command(name="use", description="使用消耗品道具")
-    @app_commands.describe(item_name="要使用的道具名稱")
+    @app_commands.describe(item_name="要使用的道具名稱", quantity="使用數量（預設1）")
     @app_commands.choices(item_name=[
         app_commands.Choice(name="恢復劑 (+50體力 +50HP)", value="恢復劑"),
         app_commands.Choice(name="強效恢復劑 (+150體力 +150HP)", value="強效恢復劑"),
         app_commands.Choice(name="糖果 (供奉精靈用)", value="糖果"),
         app_commands.Choice(name="轉法輪 (增加修為)", value="轉法輪"),
     ])
-    async def use_item(self, interaction: discord.Interaction, item_name: str):
+    async def use_item(self, interaction: discord.Interaction, item_name: str, quantity: int = 1):
         if not await require_channel(interaction, "use"):
+            return
+        if quantity < 1:
+            await interaction.response.send_message("🔴 數量需大於 0。", ephemeral=True)
             return
         pool = await get_pool()
         async with pool.acquire() as db:
@@ -80,13 +83,15 @@ class Inventory(commands.Cog):
                 "SELECT quantity FROM inventory WHERE user_id=$1 AND item_id=$2",
                 str(interaction.user.id), item["id"],
             )
-            if not inv or inv["quantity"] < 1:
-                await interaction.response.send_message(f"🔴 你沒有 {item_name}！", ephemeral=True)
+            if not inv or inv["quantity"] < quantity:
+                await interaction.response.send_message(
+                    f"🔴 背包不足！需要 {quantity} 個 {item_name}，當前 {inv['quantity'] if inv else 0} 個。", ephemeral=True
+                )
                 return
 
             await db.execute(
-                "UPDATE inventory SET quantity=quantity-1 WHERE user_id=$1 AND item_id=$2",
-                str(interaction.user.id), item["id"],
+                "UPDATE inventory SET quantity=quantity-$1 WHERE user_id=$2 AND item_id=$3",
+                quantity, str(interaction.user.id), item["id"],
             )
             await db.execute(
                 "DELETE FROM inventory WHERE user_id=$1 AND item_id=$2 AND quantity <= 0",
@@ -96,29 +101,29 @@ class Inventory(commands.Cog):
             effect_msg = ""
             if item_name == "恢復劑":
                 await db.execute(
-                    "UPDATE users SET stamina=LEAST(stamina+50, max_stamina), "
-                    "current_hp=LEAST(current_hp+50, hp) WHERE discord_id=$1",
-                    str(interaction.user.id),
+                    "UPDATE users SET stamina=LEAST(stamina+$1, max_stamina), "
+                    "current_hp=LEAST(current_hp+$1, hp) WHERE discord_id=$2",
+                    50 * quantity, str(interaction.user.id),
                 )
-                effect_msg = "體力 +50、HP +50！"
+                effect_msg = f"體力 +{50*quantity}、HP +{50*quantity}！"
             elif item_name == "強效恢復劑":
                 await db.execute(
-                    "UPDATE users SET stamina=LEAST(stamina+150, max_stamina), "
-                    "current_hp=LEAST(current_hp+150, hp) WHERE discord_id=$1",
-                    str(interaction.user.id),
+                    "UPDATE users SET stamina=LEAST(stamina+$1, max_stamina), "
+                    "current_hp=LEAST(current_hp+$1, hp) WHERE discord_id=$2",
+                    150 * quantity, str(interaction.user.id),
                 )
-                effect_msg = "體力 +150、HP +150！"
+                effect_msg = f"體力 +{150*quantity}、HP +{150*quantity}！"
             elif item_name == "糖果":
                 await db.execute(
-                    "UPDATE users SET candy=candy+1 WHERE discord_id=$1",
-                    str(interaction.user.id),
+                    "UPDATE users SET candy=candy+$1 WHERE discord_id=$2",
+                    quantity, str(interaction.user.id),
                 )
-                effect_msg = "糖果 +1！去供奉搗蛋精靈吧。"
+                effect_msg = f"糖果 +{quantity}！"
             elif item_name == "轉法輪":
                 await db.execute(
-                    "UPDATE users SET xiu_wei_progress=xiu_wei_progress+3, "
-                    "yuan_shen_exp=yuan_shen_exp+10 WHERE discord_id=$1",
-                    str(interaction.user.id),
+                    "UPDATE users SET xiu_wei_progress=xiu_wei_progress+$1, "
+                    "yuan_shen_exp=yuan_shen_exp+$2 WHERE discord_id=$3",
+                    3 * quantity, 10 * quantity, str(interaction.user.id),
                 )
                 from src.cogs.faith import _check_xiu_wei_level, _check_yuan_level
                 xiu_up = await _check_xiu_wei_level(db, str(interaction.user.id))

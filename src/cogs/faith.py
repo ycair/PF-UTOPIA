@@ -136,15 +136,28 @@ class Faith(commands.Cog):
                 return
 
             today = datetime.now(TZ).date()
-            incense = user.get("daily_incense") or 0
+            incense_item = await db.fetchval("SELECT id FROM items WHERE name='線香'")
+            inv = await db.fetchrow(
+                "SELECT quantity FROM inventory WHERE user_id=$1 AND item_id=$2",
+                str(interaction.user.id), incense_item,
+            )
+            incense = inv["quantity"] if inv else 0
 
             if incense < INCENSE_PER_PRAY:
                 await interaction.response.send_message(
-                    f"🔴 香火不足！請先到大士爺廟領取每日 3 柱香。\n"
-                    f"當前 {incense} / {DAILY_INCENSE} 柱。"
+                    f"🔴 線香不足！背包中僅有 {incense} 柱，膜拜需 {INCENSE_PER_PRAY} 柱。\n"
+                    f"請到商店購買或前往大士爺廟領取。"
                 )
                 return
 
+            await db.execute(
+                "UPDATE inventory SET quantity=quantity-$1 WHERE user_id=$2 AND item_id=$3",
+                INCENSE_PER_PRAY, str(interaction.user.id), incense_item,
+            )
+            await db.execute(
+                "DELETE FROM inventory WHERE user_id=$1 AND item_id=$2 AND quantity<=0",
+                str(interaction.user.id), incense_item,
+            )
             new_incense = incense - INCENSE_PER_PRAY
             await db.execute(
                 "UPDATE users SET daily_incense=$1, last_pray_date=$2, "
