@@ -205,18 +205,18 @@ class Shop(commands.Cog):
     async def shop_sell(self, interaction: discord.Interaction, item_name: str, quantity: int = 1):
         if not await require_channel(interaction, "shop_sell"):
             return
-            if quantity < 1:
-                await interaction.response.send_message("🔴 數量需大於 0。", ephemeral=True)
+        if quantity < 1:
+            await interaction.response.send_message("🔴 數量需大於 0。", ephemeral=True)
+            return
+        pool = await get_pool()
+        async with pool.acquire() as db:
+            user = await get_user(db, interaction.user.id)
+            if not user:
+                await interaction.response.send_message("🔴 請先註冊！", ephemeral=True)
                 return
-            pool = await get_pool()
-            async with pool.acquire() as db:
-                user = await get_user(db, interaction.user.id)
-                if not user:
-                    await interaction.response.send_message("🔴 請先註冊！", ephemeral=True)
-                    return
-                if not await require_alive(interaction, user):
-                    return
-                item = await db.fetchrow("SELECT * FROM items WHERE name=$1 AND item_type='material'", item_name)
+            if not await require_alive(interaction, user):
+                return
+            item = await db.fetchrow("SELECT * FROM items WHERE name=$1 AND item_type='material'", item_name)
             if not item:
                 await interaction.response.send_message("🔴 此道具無法出售。", ephemeral=True)
                 return
