@@ -129,6 +129,7 @@ class Shop(commands.Cog):
         app_commands.Choice(name="線香 50托幣", value="線香"),
         app_commands.Choice(name="糖果 30托幣", value="糖果"),
         app_commands.Choice(name="轉法輪 500托幣", value="轉法輪"),
+        app_commands.Choice(name="車票 350托幣", value="車票"),
     ])
     async def shop_buy(self, interaction: discord.Interaction, item_name: str, quantity: int = 1):
         if not await require_channel(interaction, "shop_buy"):
@@ -183,6 +184,21 @@ class Shop(commands.Cog):
         app_commands.Choice(name="緞帶", value="緞帶"),
         app_commands.Choice(name="毒液", value="毒液"),
         app_commands.Choice(name="魔石", value="魔石"),
+        app_commands.Choice(name="石頭", value="石頭"),
+        app_commands.Choice(name="木材", value="木材"),
+        app_commands.Choice(name="純水", value="純水"),
+        app_commands.Choice(name="草藥", value="草藥"),
+        app_commands.Choice(name="絨毛", value="絨毛"),
+        app_commands.Choice(name="鐵礦", value="鐵礦"),
+        app_commands.Choice(name="銅礦", value="銅礦"),
+        app_commands.Choice(name="祕銀礦", value="祕銀礦"),
+        app_commands.Choice(name="精金礦", value="精金礦"),
+        app_commands.Choice(name="火焰精華", value="火焰精華"),
+        app_commands.Choice(name="冰霜精華", value="冰霜精華"),
+        app_commands.Choice(name="紅寶石", value="紅寶石"),
+        app_commands.Choice(name="藍寶石", value="藍寶石"),
+        app_commands.Choice(name="幸運草", value="幸運草"),
+        app_commands.Choice(name="龍鱗", value="龍鱗"),
     ])
     async def shop_sell(self, interaction: discord.Interaction, item_name: str, quantity: int = 1):
         if not await require_channel(interaction, "shop_sell"):
@@ -249,6 +265,21 @@ class Shop(commands.Cog):
         app_commands.Choice(name="緞帶", value="緞帶"),
         app_commands.Choice(name="毒液", value="毒液"),
         app_commands.Choice(name="魔石", value="魔石"),
+        app_commands.Choice(name="石頭", value="石頭"),
+        app_commands.Choice(name="木材", value="木材"),
+        app_commands.Choice(name="純水", value="純水"),
+        app_commands.Choice(name="草藥", value="草藥"),
+        app_commands.Choice(name="絨毛", value="絨毛"),
+        app_commands.Choice(name="鐵礦", value="鐵礦"),
+        app_commands.Choice(name="銅礦", value="銅礦"),
+        app_commands.Choice(name="祕銀礦", value="祕銀礦"),
+        app_commands.Choice(name="精金礦", value="精金礦"),
+        app_commands.Choice(name="火焰精華", value="火焰精華"),
+        app_commands.Choice(name="冰霜精華", value="冰霜精華"),
+        app_commands.Choice(name="紅寶石", value="紅寶石"),
+        app_commands.Choice(name="藍寶石", value="藍寶石"),
+        app_commands.Choice(name="幸運草", value="幸運草"),
+        app_commands.Choice(name="龍鱗", value="龍鱗"),
     ])
     async def shop_price(self, interaction: discord.Interaction, item_name: str):
         if not await require_channel(interaction, "shop_sell"):

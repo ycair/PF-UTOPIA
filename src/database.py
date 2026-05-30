@@ -243,6 +243,11 @@ async def seed_data():
                     "INSERT INTO shop_sell_prices (item_id, current_price) VALUES ($1,$2) ON CONFLICT (item_id) DO NOTHING",
                     row["id"], row["base_price"],
                 )
+                await db.execute(
+                    "INSERT INTO node_prices (node_id, item_id, current_price, base_price) "
+                    "VALUES (1, $1, $2, $2) ON CONFLICT (node_id, item_id) DO NOTHING",
+                    row["id"], row["base_price"],
+                )
 
         achievements = [
             ("初來乍到", "完成註冊", "general", 1),
