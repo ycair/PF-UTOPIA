@@ -272,6 +272,30 @@ body {
   font-size: 12px;
 }
 
+/* Logout Button */
+.nav-logout {
+  background: linear-gradient(180deg, #2a2a35 0%, #1a1a24 100%);
+  border: 2px solid var(--border-light);
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: 8px;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 0 #111, 0 4px 8px rgba(0,0,0,0.3);
+}
+
+.nav-logout:hover {
+  border-color: var(--hp-red);
+  color: var(--hp-red);
+  box-shadow: 0 2px 0 #300, 0 0 8px rgba(224,72,72,0.3);
+}
+
+.nav-logout:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 0 #111, 0 2px 4px rgba(0,0,0,0.3);
+}
+
 .hidden {
   display: none !important;
 }

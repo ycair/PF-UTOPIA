@@ -54,6 +54,9 @@ class UtopiaApp {
     // Login button
     document.getElementById('login-btn').addEventListener('click', () => this.login());
     
+    // Logout button
+    document.getElementById('logout-btn').addEventListener('click', () => this.logout());
+    
     // Zoom controls
     document.getElementById('zoom-in')?.addEventListener('click', () => this.zoomTo(this.scale + 0.1));
     document.getElementById('zoom-out')?.addEventListener('click', () => this.zoomTo(this.scale - 0.1));
@@ -139,7 +142,17 @@ class UtopiaApp {
   onLoggedIn() {
     document.getElementById('login-btn').classList.add('hidden');
     document.getElementById('user-greeting').classList.remove('hidden');
+    document.getElementById('logout-btn').classList.remove('hidden');
     document.getElementById('user-name').textContent = '已登入';
+  }
+
+  logout() {
+    authToken = null;
+    localStorage.removeItem('utopia_token');
+    document.getElementById('login-btn').classList.remove('hidden');
+    document.getElementById('user-greeting').classList.add('hidden');
+    document.getElementById('logout-btn').classList.add('hidden');
+    document.getElementById('profile-full').innerHTML = '<div class="loading">請先 Discord 登入</div>';
   }
 
   centerMap() {
