@@ -186,6 +186,8 @@ async def init_db():
             content         TEXT NOT NULL,
             sent_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
+
+        ALTER TABLE map_nodes ADD COLUMN IF NOT EXISTS has_train_station BOOLEAN DEFAULT FALSE;
         """)
 
 
@@ -193,6 +195,7 @@ async def seed_data():
     pool = await get_pool()
     async with pool.acquire() as db:
         items = [
+            # ── 現有材料 ──
             ("黏液", "軟Q的史萊姆黏液", "material", "common", 5, 100, "🫧"),
             ("羽毛", "輕飄飄的羽毛", "material", "common", 7, 100, "🪶"),
             ("肉", "新鮮的肉塊", "material", "common", 12, 100, "🥩"),
@@ -203,11 +206,29 @@ async def seed_data():
             ("緞帶", "女僕的緞帶", "material", "rare", 50000, 100, "🎀"),
             ("毒液", "致命的毒液", "material", "rare", 48, 100, "🧪"),
             ("魔石", "蘊含魔力的石頭", "material", "epic", 180, 100, "💎"),
+            # ── 新增材料 16 種 ──
+            ("石頭", "堅硬的岩石碎片", "material", "common", 8, 100, "🪨"),
+            ("木材", "神木林地的木材", "material", "common", 8, 100, "🪵"),
+            ("純水", "極寒冰窟的純淨之水", "material", "common", 10, 100, "💧"),
+            ("草藥", "野生的藥用植物", "material", "common", 15, 100, "🌿"),
+            ("絨毛", "柔軟的動物絨毛", "material", "common", 6, 100, "☁️"),
+            ("鐵礦", "可冶煉的鐵礦石", "material", "uncommon", 20, 100, "⛏️"),
+            ("銅礦", "可冶煉的銅礦石", "material", "uncommon", 25, 100, "🔶"),
+            ("祕銀礦", "散發微光的祕銀礦石", "material", "rare", 120, 100, "🔮"),
+            ("精金礦", "極其堅硬的精金礦石", "material", "epic", 500, 100, "💠"),
+            ("火焰精華", "熔岩裂谷的火焰結晶", "material", "rare", 200, 100, "🔥"),
+            ("冰霜精華", "極寒冰窟的冰霜結晶", "material", "rare", 200, 100, "❄️"),
+            ("紅寶石", "璀璨的紅色寶石", "material", "epic", 500, 100, "💎"),
+            ("藍寶石", "清澈的藍色寶石", "material", "rare", 200, 100, "💙"),
+            ("幸運草", "帶來好運的四葉草", "material", "rare", 80, 100, "🍀"),
+            ("龍鱗", "遠古龍族的鱗片", "material", "legendary", 2000, 100, "🐉"),
+            # ── 消耗品 ──
             ("恢復劑", "恢復50點體力與血量", "consumable", "common", 100, 100, "🧃"),
             ("強效恢復劑", "恢復150點體力與血量", "consumable", "uncommon", 300, 300, "🧋"),
             ("線香", "膜拜教堂使用", "consumable", "common", 50, 50, "🕯️"),
             ("糖果", "供奉搗蛋精靈使用", "consumable", "common", 30, 30, "🍬"),
             ("轉法輪", "修行道具", "consumable", "rare", 500, 500, "☸️"),
+            ("車票", "搭乘驛站前往任意車站", "consumable", "common", 350, 350, "🎫"),
         ]
         for name, desc, itype, rarity, base_price, buy_price, emoji in items:
             await db.execute(
@@ -275,6 +296,43 @@ async def seed_data():
                 "INSERT INTO pets (name, rarity, attack_bonus, defense_bonus, hp_bonus, emoji) "
                 "VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (name) DO NOTHING",
                 name, rarity, atk, df, hp, emoji,
+            )
+
+        new_nodes = [
+            ("廢棄礦坑", "wild", False, "礦石資源豐富的廢棄礦坑，礦脈伴生怪群聚"),
+            ("熔岩裂谷", "wild", False, "火山地質的深層裂谷，火焰元素與寶石守護者棲息"),
+            ("極寒冰窟", "wild", False, "永凍的極寒洞穴，冰霜元素與雪原生態"),
+            ("神木林地", "wild", False, "古老神木的林地，植物型怪物與草藥天堂"),
+            ("龍眠山脈", "wild", False, "遠古龍族棲息的山脈，終局野外區域"),
+        ]
+        for name, ntype, is_safe, desc in new_nodes:
+            await db.execute(
+                "INSERT INTO map_nodes (name, node_type, is_safe, description) "
+                "VALUES ($1,$2,$3,$4) ON CONFLICT (name) DO NOTHING",
+                name, ntype, is_safe, desc,
+            )
+
+        new_edges = [
+            ("初始草原", "廢棄礦坑", 3, 15),
+            ("初始草原", "神木林地", 2, 10),
+            ("翡翠森林", "熔岩裂谷", 6, 40),
+            ("熔岩裂谷", "龍眠山脈", 7, 60),
+            ("沿海小徑", "極寒冰窟", 4, 25),
+        ]
+        for f, t, dist, danger in new_edges:
+            fn = await db.fetchval("SELECT id FROM map_nodes WHERE name=$1", f)
+            tn = await db.fetchval("SELECT id FROM map_nodes WHERE name=$1", t)
+            if fn and tn:
+                await db.execute(
+                    "INSERT INTO map_edges (from_node, to_node, base_distance, base_danger) "
+                    "VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING",
+                    fn, tn, dist, danger,
+                )
+
+        train_stations = ["烏托邦主城", "大士爺廟", "世界魔皇巢穴", "廢棄礦坑", "極寒冰窟", "龍眠山脈"]
+        for name in train_stations:
+            await db.execute(
+                "UPDATE map_nodes SET has_train_station=TRUE WHERE name=$1", name,
             )
 
 

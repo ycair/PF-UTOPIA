@@ -122,11 +122,16 @@ def _rewards_json(rewards):
 
 
 NODE_ZONE_MAP = {
-    "初始草原": ["initial_grassland_outer"],
-    "翡翠森林": ["jade_forest_outer"],
+    "初始草原": ["initial_grassland"],
+    "翡翠森林": ["jade_forest"],
     "沿海小徑": ["coastal_path"],
     "搗蛋精靈之森": ["spirit_forest"],
     "寵物天堂": ["pet_heaven"],
+    "廢棄礦坑": ["abandoned_mine"],
+    "熔岩裂谷": ["volcanic_rift"],
+    "極寒冰窟": ["frost_cave"],
+    "神木林地": ["ancient_grove"],
+    "龍眠山脈": ["dragon_spine"],
 }
 
 
@@ -268,8 +273,6 @@ class Combat(commands.Cog):
                 embed.add_field(name="⚡ 攻擊加成", value=f"+{int((atk_buff-1)*100)}% 剩餘 {m}分{s}秒", inline=True)
 
         footer = f"剩餘體力：{user['stamina'] - stamina_cost} 點 | HP：{max(0, round(u_hp, 1))}/{user['hp']}"
-        if node and node["name"] in ("翡翠森林", "初始草原") and won and random.random() < 0.15:
-            footer += f" | 🌲 迷路深入內部！再次探索可遇更強怪物"
         embed.set_footer(text=footer)
         await interaction.response.send_message(embed=embed)
 
@@ -321,6 +324,7 @@ class Combat(commands.Cog):
             u_def = int((user["defense"] + pet["def"]) * await _get_node_debuff(db, user["discord_id"]))
             dmg_mult = 1.2 if score >= boss_data["perfect_power"] else 1.0
 
+            u_hp = user["current_hp"] if user.get("current_hp") is not None else user["hp"]
             e_hp = boss_data["hp"]
             turns = []
             turn_count = 0
@@ -529,6 +533,11 @@ class Combat(commands.Cog):
         app_commands.Choice(name="🏚️ 舊城邦", value="舊城邦"),
         app_commands.Choice(name="🌸 山林後的花園", value="山林後的花園"),
         app_commands.Choice(name="📜 冒險者公會", value="冒險者公會"),
+        app_commands.Choice(name="🪨 廢棄礦坑", value="廢棄礦坑"),
+        app_commands.Choice(name="🔥 熔岩裂谷", value="熔岩裂谷"),
+        app_commands.Choice(name="❄️ 極寒冰窟", value="極寒冰窟"),
+        app_commands.Choice(name="🌳 神木林地", value="神木林地"),
+        app_commands.Choice(name="🏔️ 龍眠山脈", value="龍眠山脈"),
     ])
     async def move(self, interaction: discord.Interaction, target: str):
         pool = await get_pool()
@@ -689,6 +698,103 @@ class Combat(commands.Cog):
                 main, str(interaction.user.id),
             )
         await interaction.response.send_message("✨ 你已復活！出生於 **烏托邦主城**，滿血狀態。")
+
+    @app_commands.command(name="train", description="搭乘驛站傳送至其他車站（需持有車票）")
+    @app_commands.describe(target="目的地車站（留空則顯示車站清單）")
+    @app_commands.choices(target=[
+        app_commands.Choice(name="🏰 烏托邦主城", value="烏托邦主城"),
+        app_commands.Choice(name="🏯 大士爺廟", value="大士爺廟"),
+        app_commands.Choice(name="😈 世界魔皇巢穴", value="世界魔皇巢穴"),
+        app_commands.Choice(name="🪨 廢棄礦坑", value="廢棄礦坑"),
+        app_commands.Choice(name="❄️ 極寒冰窟", value="極寒冰窟"),
+        app_commands.Choice(name="🏔️ 龍眠山脈", value="龍眠山脈"),
+    ])
+    async def train(self, interaction: discord.Interaction, target: str = None):
+        pool = await get_pool()
+        async with pool.acquire() as db:
+            user = await get_user(db, interaction.user.id)
+            if not user:
+                await interaction.response.send_message("🔴 請先註冊！", ephemeral=True)
+                return
+            if user.get("travel_target"):
+                await interaction.response.send_message("🔴 你正在移動中，無法搭乘驛站！", ephemeral=True)
+                return
+            if user["meditating"]:
+                await interaction.response.send_message("🔴 打坐中無法移動！", ephemeral=True)
+                return
+
+            current_node = await db.fetchrow(
+                "SELECT id, name, has_train_station FROM map_nodes WHERE id=$1",
+                user.get("current_node"),
+            )
+            if not current_node or not current_node["has_train_station"]:
+                await interaction.response.send_message(
+                    "🔴 你所在的節點沒有驛站！請移動到有 🚂 標記的節點。",
+                    ephemeral=True,
+                )
+                return
+
+            if target is None:
+                stations = await db.fetch(
+                    "SELECT name FROM map_nodes WHERE has_train_station=TRUE AND id!=$1 ORDER BY id",
+                    current_node["id"],
+                )
+                ticket = await db.fetchrow(
+                    "SELECT inv.quantity FROM inventory inv JOIN items i ON i.id=inv.item_id "
+                    "WHERE inv.user_id=$1 AND i.name='車票'",
+                    str(interaction.user.id),
+                )
+                qty = ticket["quantity"] if ticket else 0
+                lines = [f"{s['name']}" for s in stations]
+                embed = discord.Embed(
+                    title="🚂 驛站傳送",
+                    description=f"背包內車票：🎫 ×{qty}\n\n" + "\n".join(lines),
+                    color=discord.Color.blue(),
+                )
+                embed.set_footer(text="使用 /train <目的地> 搭乘")
+                await interaction.response.send_message(embed=embed)
+                return
+
+            target_node = await db.fetchrow(
+                "SELECT id, name, has_train_station FROM map_nodes WHERE name=$1", target,
+            )
+            if not target_node or not target_node["has_train_station"]:
+                await interaction.response.send_message(f"🔴 **{target}** 不是驛站節點。", ephemeral=True)
+                return
+            if target_node["id"] == current_node["id"]:
+                await interaction.response.send_message(f"🔴 你已經在 {target} 了！", ephemeral=True)
+                return
+
+            ticket_item = await db.fetchrow(
+                "SELECT i.id, inv.quantity FROM inventory inv JOIN items i ON i.id=inv.item_id "
+                "WHERE inv.user_id=$1 AND i.name='車票'",
+                str(interaction.user.id),
+            )
+            if not ticket_item or ticket_item["quantity"] < 1:
+                await interaction.response.send_message(
+                    "🔴 你沒有車票！請在主城商店 `/shop` 購買車票（350 托幣）。",
+                    ephemeral=True,
+                )
+                return
+
+            await db.execute(
+                "UPDATE inventory SET quantity=quantity-1 WHERE user_id=$1 AND item_id=$2",
+                str(interaction.user.id), ticket_item["id"],
+            )
+            await db.execute(
+                "DELETE FROM inventory WHERE user_id=$1 AND item_id=$2 AND quantity<=0",
+                str(interaction.user.id), ticket_item["id"],
+            )
+            await db.execute(
+                "UPDATE users SET current_node=$1 WHERE discord_id=$2",
+                target_node["id"], str(interaction.user.id),
+            )
+
+            remaining = ticket_item["quantity"] - 1
+            await interaction.response.send_message(
+                f"🚂 你搭乘驛站抵達了 **{target_node['name']}**！\n"
+                f"剩餘車票：🎫 ×{remaining}"
+            )
 
     @app_commands.command(name="world_boss_rank", description="查看世界魔皇全服傷害排行榜")
     async def world_boss_rank(self, interaction: discord.Interaction):
