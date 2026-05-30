@@ -271,3 +271,122 @@
 6. **`/move` 選單更新**：補上 5 個新節點的 Choice
 
 > 本次不碰戰鬥公式、不碰效果系統、不碰裝備系統。
+
+---
+
+## 七、驛站系統 `/train`
+
+### 設計理念
+
+在地圖擴大到 20+ 節點後，深層區域（龍眠山脈、極寒冰窟）的往返時間過長。驛站提供付費快速移動，不破壞探索感（驛站只覆蓋部分節點，到驛站之間仍需步行）。
+
+### 驛站節點（6 個）
+
+```
+         [世界魔皇巢穴] 🚂        [大士爺廟] 🚂
+               │                      │
+               └─── [翡翠森林] ────────┘
+                  /    |    \
+      [搗蛋精靈]  [舊城邦]  [花園]
+               \    |    /
+               [初始草原]───[沿海小徑]───[極寒冰窟] 🚂
+               /    |    \
+     [廢棄礦坑] 🚂 [神木林地] [🏰 主城] 🚂   [寵物天堂]
+                                      │
+                                  [龍眠山脈] 🚂
+```
+
+> 🚂 = 驛站節點
+
+### 車票機制
+
+車票是商店消耗品，整合進現有 `items` + `inventory` 系統。玩家在商店購買車票後存於背包，於驛站使用 `/train` 消耗 1 張傳送。
+
+```
+┌──────────────────────┐      ┌───────────────┐
+│ 主城商店              │ ───→ │ 背包：車票 ×N  │
+│ /shop → 購買車票      │      │ (inventory)   │
+│ 350 托幣/張           │      └───────┬───────┘
+└──────────────────────┘              │ 野外任意驛站
+                                      ▼
+                             ┌──────────────────┐
+                             │ /train 龍眠山脈    │
+                             │ 耗 1 張車票 → 傳送 │
+                             └──────────────────┘
+```
+
+### 規則
+
+| 項目 | 規格 |
+|------|------|
+| 車票定義 | `items` 表 consumable，emoji 🎫，buy_price 350，sell_price 0（不可賣回） |
+| 購票方式 | `/shop` 或 `/shop_buy 車票`（未來：僅主城可買） |
+| 搭車指令 | `/train <目的地>` |
+| 搭車地點 | 任意驛站節點 |
+| 費用 | 消耗背包內 1 張車票 |
+| 解鎖條件 | 無，全部驛站預設可用 |
+
+### `/train` 指令
+
+```
+/train            → 無參數，顯示可用目的地清單 + 背包內車票數
+/train 龍眠山脈    → 消耗 1 張車票，傳送至龍眠山脈
+```
+
+### 資料結構
+
+`map_nodes` 加標記欄位：
+
+```sql
+ALTER TABLE map_nodes ADD COLUMN has_train_station BOOLEAN DEFAULT FALSE;
+```
+
+`items` 表新增車票（seed_data 寫入）：
+
+```sql
+INSERT INTO items (name, description, item_type, rarity, base_price, buy_price, emoji)
+VALUES ('車票', '搭乘驛站前往任意車站', 'consumable', 'common', 350, 350, '🎫')
+ON CONFLICT (name) DO NOTHING;
+```
+
+6 個驛站節點設定 `has_train_station = TRUE`：
+主城、大士爺廟、世界魔皇巢穴、廢棄礦坑、極寒冰窟、龍眠山脈
+
+### `/train` 指令邏輯
+
+```
+/train <目的地>
+1. 檢查 current_node.has_train_station == true
+2. 檢查 target_node.has_train_station == true
+3. 檢查 current_node != target_node
+4. 查 inventory 是否有 車票（item_type=consumable, name=車票）
+5. inventory 車票 quantity -= 1 → 更新 current_node = target_node → embed
+
+/train（無參數）
+1. 檢查 current_node.has_train_station == true
+2. 列出所有 has_train_station=true 的節點（除當前）
+3. 查背包車票數量，顯示於 embed
+```
+
+### UI 範例
+
+```
+🚂 驛站傳送 — 背包內車票 ×4
+選擇目的地：
+  🏰 烏托邦主城
+  🏯 大士爺廟
+  🪨 廢棄礦坑
+  ❄️ 極寒冰窟
+  😈 世界魔皇巢穴
+  🏔️ 龍眠山脈
+```
+
+### 設計考量
+
+| 正面 | 說明 |
+|------|------|
+| 減少深層區域往返疲勞 | 驛站只覆蓋 6/22 節點，到驛站之間仍須步行 |
+| 托幣出口，驅動經濟 | 350 托幣 ≒ 賣 20~30 個基礎材料 |
+| 整合現有系統 | 車票 = consumable item，沿用 inventory/shop 邏輯，零新表 |
+| 主城購票創造往返需求 | 野外農完 → 回主城賣 → 順便補票 → 再出發，形成循環 |
+| 不破壞世界魔皇討伐 | 世界魔皇巢穴有驛站，囤票後快速集合 |
